@@ -1,0 +1,21 @@
+{
+  "id": "shell_executor",
+  "name": "Shell Executor",
+  "description": "Execute terminal/console commands on the local system. Use this for dependency management (npm/pip), project initialization, and system queries. CAUTION: Do not execute destructive commands.",
+  "version": "1.0.0",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "string",
+        "description": "The full command to execute (e.g., 'pip list' or 'npm install')."
+      },
+      "cwd": {
+        "type": "string",
+        "description": "The working directory to run the command in (optional, defaults to project root)."
+      }
+    },
+    "required": ["command"]
+  }
+}

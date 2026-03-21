@@ -1,0 +1,10 @@
+{
+  "frontend_primary_color": {
+    "content": "这个项目的前端主色调是 #0ea5e9",
+    "timestamp": "2026-03-20T14:59:42.828929"
+  },
+  "python_asyncio_usage_summary_zh": {
+    "content": "基于 Python 官方 asyncio 文档的异步使用要点总结：\n1. asyncio 用于使用 async/await 编写并发代码，尤其适合 IO-bound（I/O 密集型）和高层次结构化网络程序，不适合直接解决 CPU 密集型计算。\n2. 核心编程模型是协程（coroutine）：用 async def 定义协程，用 await 挂起当前协程并等待其他可等待对象完成。\n3. 入口通常使用高层 API 运行协程，如 asyncio.run()；在 asyncio REPL 中可直接使用 await。\n4. 任务并发应基于 Coroutines and Tasks：把协程包装为 Task 后可被事件循环调度，实现多个 I/O 操作并发推进。\n5. asyncio 的高层能力包括：并发运行协程、网络 I/O 与 IPC、子进程控制、队列分发任务、同步原语协调并发逻辑。\n6. 常见同步方式不是线程锁思维，而是使用 asyncio 提供的异步同步原语（如锁、事件、条件变量、信号量等）来协调协程之间的访问顺序。\n7. 生产实践中优先使用高层 API（runners、tasks、streams、queues、subprocesses、synchronization primitives），只有在开发框架/库时再考虑 low-level APIs。\n8. 低层 API 主要面向库与框架开发者：包括事件循环管理、Futures、Transports/Protocols、回调桥接等，用于构建更底层抽象。\n9. 事件循环（event loop）是 asyncio 的调度核心，负责驱动任务、网络事件、子进程、信号等；普通业务代码通常不必手工深度控制事件循环。\n10. asyncio 也提供将回调式代码与 async/await 风格衔接的能力，适合逐步改造旧代码或封装底层异步接口。\n11. 若应用场景是高性能网络服务、数据库异步连接、分布式任务队列、流式 I/O 等，asyncio 通常是合适基础设施。\n12. 使用建议：\n   - 优先把耗时 I/O 操作改造成 await 形式；\n   - 用任务组织并发，而不是串行 await 每一步；\n   - 用队列在生产者/消费者之间解耦；\n   - 用同步原语保护共享状态；\n   - 仅在确有需要时接触事件循环和协议/传输层等低层接口。\n13. 平台注意：官方文档注明 asyncio 不适用于 WASI / WebAssembly 平台。\n14. 学习路径建议：先掌握 runners、coroutines/tasks、streams、queues、synchronization primitives，再深入 event loop、futures、transports/protocols。\n简短结论：asyncio 的最佳实践是“优先高层 API、围绕协程与任务建模、把并发重点放在 I/O 等待期间、用异步同步原语和队列组织协作、仅在封装框架能力时使用底层事件循环接口”。",
+    "timestamp": "2026-03-20T17:39:06.187269"
+  }
+}

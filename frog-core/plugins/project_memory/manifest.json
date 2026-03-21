@@ -1,0 +1,26 @@
+{
+  "id": "project_memory",
+  "name": "Dynamic Project Memory",
+  "description": "Store and retrieve persistent facts, user preferences, architectural decisions, and TODOs across sessions.",
+  "version": "1.0.0",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["save", "get", "list", "clear"],
+        "description": "The action to perform."
+      },
+      "key": {
+        "type": "string",
+        "description": "The unique identifier for the memory (required for 'save', 'get', and 'clear')."
+      },
+      "value": {
+        "type": "string",
+        "description": "The detailed content to store (required only for 'save')."
+      }
+    },
+    "required": ["action"]
+  }
+}

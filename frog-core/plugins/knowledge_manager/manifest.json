@@ -1,0 +1,31 @@
+{
+  "id": "knowledge_manager",
+  "name": "Knowledge Manager",
+  "description": "Save expert research findings, analysis, and summaries to the permanent Knowledge Base for future retrieval.",
+  "version": "1.0.0",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["save"],
+        "description": "Action to perform."
+      },
+      "title": {
+        "type": "string",
+        "description": "Title of the knowledge document."
+      },
+      "content": {
+        "type": "string",
+        "description": "Full content of the knowledge/analysis (Markdown format recommended)."
+      },
+      "tags": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "List of tags for categorization."
+      }
+    },
+    "required": ["action", "title", "content"]
+  }
+}

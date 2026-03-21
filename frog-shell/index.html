@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="nav_command">Frog AI Core</title>
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        :root {
+            --bg-deep: #020617;
+            --bg-slate: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --user-bubble: #1e293b;
+            --ai-bubble: #334155;
+            --system-bg: #0f172a;
+            --sidebar-width: 240px;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        @font-face {
+            font-family: 'Inter';
+            src: local('Inter'), local('system-ui');
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            letter-spacing: -0.01em;
+        }
+
+        /* Modern Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-deep);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+            -webkit-app-region: drag;
+        }
+
+        .sidebar h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--accent);
+            padding: 0 12px;
+            margin-bottom: 24px;
+            font-weight: 800;
+        }
+
+        .nav-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-secondary);
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            -webkit-app-region: no-drag;
+        }
+
+        .nav-item:hover {
+            background: var(--glass);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--accent);
+            color: var(--bg-deep);
+            font-weight: 600;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Layout */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: radial-gradient(circle at top right, #1e1b4b 0%, var(--bg-deep) 40%);
+        }
+
+        header {
+            padding: 24px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            background: rgba(2, 6, 23, 0.5);
+            border-bottom: 1px solid var(--border);
+            -webkit-app-region: drag;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        /* Chat Area - Practical & Pro */
+        .command-section {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            padding: 24px 40px 40px 40px;
+            overflow: hidden;
+            gap: 24px;
+        }
+
+        .chat-area {
+            flex: 1;
+            max-width: 55%;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .console-area {
+            flex: 1;
+            background: #020617; /* Deeper black for terminal */
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        .console-header {
+            background: #0f172a;
+            padding: 10px 16px;
+            font-family: 'Cascadia Code', monospace;
+            font-size: 0.75rem;
+            color: #64748b;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        #consoleLog {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.85em;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            scrollbar-width: thin;
+        }
+
+        #chatLog {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 10px 16px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        #chatLog::-webkit-scrollbar { width: 6px; }
+        #chatLog::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+        /* Message Bubbles - Modern Geometry */
+        .msg-container {
+            display: flex;
+            flex-direction: column;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .pulse { animation: pulse 2s infinite ease-in-out; }
+
+        .msg-user { align-self: flex-end; }
+        .msg-ai { align-self: flex-start; }
+
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.85em;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .msg-user .bubble {
+            background: var(--accent);
+            color: var(--bg-deep);
+            border-bottom-right-radius: 4px;
+            font-weight: 500;
+        }
+
+        .msg-ai .bubble {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Process Logs (Thought/Action) - Terminal Style */
+        .process-log {
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.9em;
+            color: #94a3b8;
+            margin: 2px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            width: 100%;
+            line-height: 1.5;
+        }
+
+        .process-log.observation {
+            color: #4ade80;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(74, 222, 128, 0.05);
+            border-radius: 6px;
+        }
+
+        .process-log span:first-child {
+            font-weight: bold;
+            color: var(--accent);
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+
+        .process-log .log-content {
+            color: var(--text-primary);
+            opacity: 0.9;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .process-log.observation { color: #4ade80; }
+
+        /* Input Area - Sleek */
+        .input-wrapper {
+            padding: 24px 0 40px 0;
+            display: flex;
+            gap: 12px;
+            position: relative;
+        }
+
+        #cmdInput {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            color: white;
+            font-size: 1em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        #cmdInput:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
+            outline: none;
+        }
+
+        .btn-send {
+            background: var(--accent);
+            color: var(--bg-deep);
+            border: none;
+            border-radius: 12px;
+            width: 54px;
+            height: 54px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .btn-send:hover { transform: scale(1.05); }
+
+        /* General Utilities */
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--glass);
+            color: var(--text-primary);
+        }
+
+        /* Essential Visibility Rules */
+        .view-section {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .view-section.active {
+            display: flex;
+        }
+
+        /* Legacy/Extended Components Theme Integration */
+        .learning-section, .settings-card, .plugin-grid-container {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Compact Tool Card Component */
+        .tool-card {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tool-card:hover { 
+            border-color: var(--accent); 
+            transform: translateY(-2px); 
+            background: var(--bg-card);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+        }
+
+        .tool-card h4 { margin: 0; color: var(--accent); font-size: 0.95em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 24px; }
+        .tool-card p { 
+            margin: 0; color: var(--text-secondary); font-size: 0.8em; flex: 1; 
+            display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; 
+        }
+
+        .tool-badge {
+            font-size: 0.7em;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            width: fit-content;
+        }
+
+        .badge-builtin { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+        .badge-generated { background: rgba(167, 139, 250, 0.15); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.3); }
+        .badge-uploaded { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
+
+        .delete-tool-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0;
+        }
+
+        .tool-card:hover .delete-tool-btn { opacity: 1; }
+        .delete-tool-btn:hover { background: #ef4444; color: white; transform: scale(1.1); }
+        /* Extended Components Theme (Learning/Settings) */
+        .learning-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: rgba(0,0,0,0.2);
+            padding: 4px;
+            border-radius: 10px;
+            width: fit-content;
+        }
+
+        .learning-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .learning-tab:hover { color: var(--text-primary); }
+        .learning-tab.active {
+            background: var(--bg-slate);
+            color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .learning-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .learning-content.active {
+            display: block;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .search-row input {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: white;
+            flex: 1;
+        }
+
+        .knowledge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 14px;
+        }
+
+        .knowledge-card, .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .knowledge-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+        .knowledge-card h4, .result-card h3 {
+            margin: 0 0 8px 0;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .knowledge-card p, .result-card p {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            line-height: 1.5;
+            margin: 4px 0;
+        }
+
+        #refreshBtn {
+            background: var(--glass) !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text-secondary) !important;
+            font-weight: 600;
+        }
+
+        #refreshBtn:hover {
+            border-color: var(--accent) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Form Controls - Modern & Slick */
+        .form-section { margin-bottom: 32px; }
+        .form-label {
+            display: block;
+            font-size: 0.9em;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        .input-group label { font-size: 0.8em; color: var(--text-secondary); font-weight: 500; }
+
+        input, select {
+            background: var(--bg-slate);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: white;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent);
+            background: var(--bg-card);
+        }
+
+        .btn-action {
+            background: var(--accent);
+            color: var(--bg-deep);
+            border: none;
+            border-radius: 10px;
+            padding: 14px 28px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-glow); }
+
+        /* Connection Status Component */
+        .connection-card {
+            background: var(--bg-slate);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .dot.online { background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+
+        /* Document Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 48px 24px;
+            text-align: center;
+            background: var(--bg-slate);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--bg-card);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .upload-zone p { margin: 0; }
+
+        #uploadProgress {
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .progress-container {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            height: 6px;
+            border-radius: 10px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.4s ease;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2 id="nav-factory">FROG CORE</h2>
+        <div class="nav-item active" id="nav-item-command" data-i18n="nav_command">AI Command</div>
+        <div class="nav-item" id="nav-item-main" data-i18n="nav_main">Knowledge Learning</div>
+        <div class="nav-item" id="nav-item-plugins" data-i18n="nav_plugins">Plugins</div>
+        <div class="nav-item" id="nav-item-settings" data-i18n="nav_settings">Settings</div>
+        
+        <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid #334155; -webkit-app-region: no-drag;">
+            <button id="refreshBtn" class="nav-item" style="width: 100%; justify-content: center; background: var(--bg-slate);">
+                <span data-i18n="refresh_ui">Refresh UI</span>
+            </button>
+        </div>
+    </div>
+    <div class="main-content">
+        <!-- AI Command View -->
+        <div id="view-command" class="view-section active">
+            <header>
+                <h1 data-i18n="command_title">AI Command Center</h1>
+                <div style="display: flex; gap: 12px; -webkit-app-region: no-drag;">
+                    <button id="clearHistoryBtn" class="btn-secondary" data-i18n="clear_history_btn">Clear</button>
+                </div>
+            </header>
+
+            <div class="command-section">
+                <div class="chat-area">
+                    <div id="chatLog"></div>
+                    <div class="input-wrapper">
+                        <input type="text" id="cmdInput" placeholder="Enter your command here..." data-i18n-placeholder="cmd_placeholder" style="flex: 1;">
+                        <button id="sendBtn" class="btn-send">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="console-area">
+                    <div class="console-header">
+                        <div class="dot" style="background: #ef4444;"></div>
+                        <div class="dot" style="background: #eab308;"></div>
+                        <div class="dot" style="background: #22c55e;"></div>
+                        <span style="margin-left: 8px;">Execution Trace Logs</span>
+                    </div>
+                    <div id="consoleLog">
+                        <!-- Process logs injected here -->
+                        <div style="color: #475569; font-style: italic; font-family: 'Cascadia Code', monospace;">[System Daemon Initialized...]</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Knowledge Learning View -->
+        <div id="view-main" class="view-section">
+            <header>
+                <h1 data-i18n="main_title">Knowledge Learning</h1>
+            </header>
+
+            <div class="learning-section">
+                <h2 data-i18n="learning_title">Train Your AI Assistant</h2>
+                
+                <div class="learning-tabs">
+                    <button class="learning-tab active" id="tab-documents" data-i18n="tab_documents">Documents</button>
+                    <button class="learning-tab" id="tab-knowledge" data-i18n="tab_knowledge">Knowledge Base</button>
+                    <button class="learning-tab" id="tab-expert" data-i18n="tab_expert">Expert Knowledge</button>
+                </div>
+
+                <div class="learning-content active" id="content-documents">
+                    <div class="upload-zone" id="dropZone">
+                        <input type="file" id="fileInput" multiple style="display: none;">
+                        <div id="dropText">
+                            <p style="font-size: 1.1em; font-weight: 700;" data-i18n="drop_zone_main">Drag & Drop or Click to Upload</p>
+                            <p style="font-size: 0.85em; color: var(--text-secondary);" data-i18n="drop_zone_sub">PDF, Word, TXT, PNG, JPG</p>
+                        </div>
+                        <div id="uploadProgress" style="display:none;">
+                            <p style="font-size: 0.9em; font-weight: 600;" data-i18n="processing">⚡ Processing Knowledge...</p>
+                            <div class="progress-container">
+                                <div id="progressBar" class="progress-bar-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="uploadFeedback" style="margin-top: 15px; font-size: 0.9em; min-height: 20px;"></div>
+                </div>
+
+                <div class="learning-content" id="content-websearch">
+                    <div class="search-row">
+                        <input type="text" id="webSearchInput" placeholder="Search the web..." data-i18n-placeholder="websearch_placeholder">
+                        <button id="webSearchBtn" class="btn-primary" data-i18n="search_btn">Search</button>
+                    </div>
+                    <div id="searchResults" style="display: none;">
+                        <div id="searchResultsList"></div>
+                    </div>
+                </div>
+
+                <div class="learning-content" id="content-knowledge">
+                    <div id="knowledgeList" class="knowledge-grid"></div>
+                </div>
+
+                <div class="learning-content" id="content-expert">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0;" data-i18n="expert_knowledge_title">Expert Knowledge Base</h3>
+                        <button id="refreshExpertBtn" class="btn-secondary" style="padding: 8px 16px; font-size: 0.9em;" data-i18n="refresh">🔄 Refresh</button>
+                    </div>
+                    <div id="expertList" class="knowledge-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plugins View -->
+        <div id="view-plugins" class="view-section">
+            <header>
+                <div>
+                    <h1 data-i18n="plugins_title">Plugin Orchestration</h1>
+                    <p data-i18n="plugins_desc">Connect your AI to external software and hardware tools.</p>
+                </div>
+                <div style="display: flex; gap: 12px; -webkit-app-region: no-drag;">
+                    <button id="uploadPluginBtn" class="btn-primary" style="padding: 10px 20px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        Upload ZIP
+                    </button>
+                    <input type="file" id="pluginZipInput" accept=".zip" style="display: none;">
+                    <button id="refreshPluginsBtn" class="btn-secondary" style="width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l5.64 5.64A9 9 0 0 0 20.49 15"></path></svg>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="plugin-grid-container" style="padding: 0; background: transparent; border: none; backdrop-filter: none; overflow-y: auto;">
+                <div id="pluginList" class="knowledge-grid" style="padding: 2px;">
+                    <!-- Dynamic Tool Cards -->
+                </div>
+            </div>
+        </div>
+
+        <div id="view-settings" class="view-section">
+            <header>
+                <h1 data-i18n="nav_settings">User Settings</h1>
+                <p data-i18n="settings_desc">Configure project paths and API keys.</p>
+            </header>
+            <div class="settings-card">
+                <div class="form-section">
+                    <label class="form-label" data-i18n="lang_settings">Language Settings</label>
+                    <div class="learning-tabs">
+                        <button class="learning-tab lang-btn active" id="lang-en">English</button>
+                        <button class="learning-tab lang-btn" id="lang-zh">简体中文</button>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label" data-i18n="llm_config">LLM Configuration</label>
+                    
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label data-i18n="llm_provider">Provider</label>
+                            <select id="llm-provider">
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic Claude</option>
+                                <option value="ollama">Ollama (Local)</option>
+                                <option value="custom">Custom (OpenAI Compatible)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label data-i18n="llm_model">Model</label>
+                            <input type="text" id="llm-model" placeholder="gpt-4o" data-i18n-placeholder="model_placeholder">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label data-i18n="api_base">API Base URL (Optional)</label>
+                            <input type="text" id="llm-base" placeholder="https://api.openai.com/v1" data-i18n-placeholder="api_base_placeholder">
+                        </div>
+                        <div class="input-group">
+                            <label data-i18n="api_key">API Key</label>
+                            <input type="password" id="llm-key" placeholder="sk-...">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label data-i18n="reasoning_effort">Reasoning Effort</label>
+                            <select id="llm-reasoning">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="xhigh">Extra High</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button id="save-llm" class="btn-action">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <span data-i18n="save_btn">Save Configuration</span>
+                    </button>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 32px 0;">
+
+                <div class="form-section">
+                    <label class="form-label" data-i18n="brain_endpoint">Connection Status</label>
+                    <div class="connection-card">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.8em; color: var(--text-secondary);" data-i18n="endpoint_url">Endpoint URL</span>
+                            <code style="color: var(--accent); font-family: monospace; font-size: 0.9em;">http://127.0.0.1:8000</code>
+                        </div>
+                        <div id="statusBox" class="status-badge">
+                            <div id="statusDot" class="dot"></div>
+                            <span id="brainStatus" style="font-weight: 700; font-size: 0.85em;" data-i18n="checking">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let axios;
+        if (typeof require !== 'undefined') {
+            try { axios = require('axios'); } catch (e) { console.warn('require(axios) failed'); }
+        }
+        if (!axios && typeof window !== 'undefined') {
+            axios = window.axios; // Fallback to CDN/Global if available
+        }
+        const dropZone = document.getElementById('dropZone');
+        const dropText = document.getElementById('dropText');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const brainStatus = document.getElementById('brainStatus');
+        const cmdInput = document.getElementById('cmdInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatLog = document.getElementById('chatLog');
+        const uploadFeedback = document.getElementById('uploadFeedback');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => handleFiles(e.target.files);
+
+        cmdInput.onkeypress = (e) => { if (e.key === 'Enter') sendBtn.click(); };
+
+        const translations = {
+            en: {
+                nav_command: "AI Command",
+                nav_main: "Knowledge Learning",
+                nav_plugins: "Plugins",
+                nav_settings: "Settings",
+                command_title: "AI Command Center",
+                main_title: "Knowledge Learning",
+                learning_title: "Train Your AI Assistant",
+                tab_documents: "Documents",
+                tab_websearch: "Web Search",
+                tab_knowledge: "Knowledge Base",
+                websearch_placeholder: "Search the web...",
+                search_btn: "Search",
+                factory_title: "AI Agent Factory",
+                factory_desc: "Feed business documents to generate your professional AI assistant.",
+                drop_zone_main: "Drag & Drop Business Documents/Images Here",
+                drop_zone_sub: "PDF, Word, TXT, PNG, JPG",
+                processing: "⚡ Processing Knowledge...",
+                status_title: "System Status",
+                brain_label: "Brain:",
+                checking: "Checking...",
+                cmd_placeholder: "Enter your command here...",
+                send_btn: "Send",
+                save_btn: "Save Configuration",
+                kb_desc: "Manage your assistant's learned business facts and documents.",
+                no_docs: "No documents processed yet.",
+                plugins_title: "Plugin Orchestration",
+                plugins_desc: "Connect your AI to external software and hardware tools.",
+                system_tools: "System Tools",
+                system_tools_desc: "File management, terminal access, etc.",
+                active: "Active",
+                settings_desc: "Configure project paths and API keys.",
+                brain_endpoint: "Connection Status",
+                endpoint_url: "Endpoint URL",
+                switch_lang: "Switch to 中文",
+                lang_settings: "Language Settings",
+                llm_config: "LLM Configuration",
+                llm_provider: "Provider",
+                llm_model: "Model",
+                api_base: "API Base URL (Proxy)",
+                api_base_placeholder: "e.g. https://api.openai-proxy.com/v1",
+                api_key: "API Key",
+                reasoning_effort: "Reasoning Effort",
+                model_placeholder: "e.g. gpt-4o",
+                online: "Online 🟢",
+                offline: "Offline 🔴",
+                upload_failed: "Upload failed. Is the Brain running?",
+                agent_ready: "Agent Ready: Professionals trained on {n} documents.",
+                save_success: "Configuration saved successfully!",
+                refresh_ui: "Refresh UI",
+                learn_btn: "Learn",
+                learning: "Learning...",
+                no_knowledge: "No knowledge learned yet.",
+                doc_knowledge: "Document Knowledge",
+                web_knowledge: "Web Knowledge",
+                tab_expert: "Expert Knowledge",
+                expert_knowledge_title: "Expert Knowledge Base",
+                refresh: "Refresh",
+                no_expert_knowledge: "No expert knowledge yet. Summarize conversations to add!",
+                failed_load_expert: "Failed to load expert knowledge.",
+                summarize_btn: "📊 Summarize",
+                clear_history_btn: "🗑️ Clear History",
+                confirm_clear_history: "Are you sure you want to clear the chat history?",
+                not_enough_history: "Not enough conversation history to summarize!",
+                no_api_key: "Please configure your API key first in Settings!",
+                enter_title: "Please enter a title for this expert knowledge:",
+                default_title: "Conversation Summary",
+                enter_tags: "Enter tags (comma separated):",
+                default_tags: "conversation,summary",
+                summarizing: "Summarizing conversation...",
+                summarize_success: "✓ Conversation summarized and saved to Expert Knowledge!",
+                summarize_failed: "Failed to summarize conversation:",
+                source_system: "System",
+                source_generated: "AI Generated",
+                source_uploaded: "Uploaded",
+                delete_confirm: "Are you sure you want to delete this tool?",
+                delete_success: "Tool deleted successfully!",
+                upload_success: "Plugin installed successfully!",
+                uploading: "Uploading...",
+                no_plugins: "No plugins found."
+            },
+            zh: {
+                nav_command: "AI 指挥",
+                nav_main: "知识学习",
+                nav_plugins: "插件",
+                nav_settings: "设置",
+                command_title: "AI 指挥中心",
+                main_title: "知识学习",
+                learning_title: "训练你的 AI 助手",
+                tab_documents: "文档学习",
+                tab_websearch: "搜索网络",
+                tab_knowledge: "知识库",
+                websearch_placeholder: "搜索网络...",
+                search_btn: "搜索",
+                factory_title: "AI 智能助手工厂",
+                factory_desc: "通过导入业务文档，快速生成你的专业 AI 助手。",
+                drop_zone_main: "将业务文档或图片拖拽到此处",
+                drop_zone_sub: "支持 PDF, Word, TXT, PNG, JPG",
+                processing: "⚡ 知识点提取中...",
+                status_title: "系统状态",
+                brain_label: "大脑核心:",
+                checking: "检查中...",
+                cmd_placeholder: "在此输入指令...",
+                send_btn: "发送",
+                save_btn: "保存配置",
+                kb_desc: "管理助手已学习的业务知识和文档。",
+                no_docs: "暂无已处理的文档。",
+                plugins_title: "插件与工具编排",
+                plugins_desc: "将 AI 连接到外部软件或硬件工具。",
+                system_tools: "系统工具",
+                system_tools_desc: "文件管理、终端访问等。",
+                active: "运行中",
+                settings_desc: "配置项目路径和 API 密钥。",
+                brain_endpoint: "连接状态",
+                endpoint_url: "后台接口地址",
+                lang_settings: "语言设置",
+                llm_config: "大模型配置",
+                llm_provider: "服务商",
+                llm_model: "模型名称",
+                api_base: "API 代理地址 (中转)",
+                api_base_placeholder: "例如: https://api.openai-proxy.com/v1",
+                api_key: "API 密钥",
+                reasoning_effort: "推理强度",
+                model_placeholder: "例如: gpt-4o",
+                switch_lang: "切换至 English",
+                online: "在线 🟢",
+                offline: "离线 🔴",
+                upload_failed: "上传失败。大脑核心是否已启动？",
+                agent_ready: "助手已就绪：已基于 {n} 份文档完成训练。",
+                save_success: "配置已成功保存！",
+                refresh_ui: "刷新界面",
+                learn_btn: "学习",
+                learning: "学习中...",
+                no_knowledge: "暂无已学习的知识。",
+                doc_knowledge: "文档知识",
+                web_knowledge: "网络知识",
+                tab_expert: "专家知识库",
+                expert_knowledge_title: "专家知识库",
+                refresh: "刷新",
+                no_expert_knowledge: "暂无专家知识，总结对话来添加吧！",
+                failed_load_expert: "加载专家知识失败。",
+                summarize_btn: "📊 总结",
+                clear_history_btn: "🗑️ 清除历史",
+                confirm_clear_history: "确定要清除对话历史吗？",
+                not_enough_history: "对话历史太少，无法总结！",
+                no_api_key: "请先在设置中配置 API 密钥！",
+                enter_title: "请输入专家知识的标题：",
+                default_title: "对话总结",
+                enter_tags: "输入标签（用逗号分隔）：",
+                default_tags: "对话,总结",
+                summarizing: "正在总结对话...",
+                summarize_success: "✓ 对话已总结并保存到专家知识库！",
+                summarize_failed: "总结对话失败：",
+                source_system: "系统内置",
+                source_generated: "AI 生成",
+                source_uploaded: "用户上传",
+                delete_confirm: "确定要删除这个工具吗？",
+                delete_success: "工具已成功删除！",
+                upload_success: "插件安装成功！",
+                uploading: "正在上传...",
+                no_plugins: "未发现任何插件。"
+            }
+        };
+
+        document.getElementById('refreshBtn').onclick = () => {
+            window.location.reload();
+        };
+
+        let currentLang = localStorage.getItem('frog_lang') || 'en';
+
+        function updateLanguage() {
+            localStorage.setItem('frog_lang', currentLang);
+            const t = translations[currentLang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.innerText = t[key];
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (t[key]) el.placeholder = t[key];
+            });
+            
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.style.backgroundColor = '#334155';
+                btn.style.borderColor = '#475569';
+                btn.style.color = 'white';
+            });
+            const activeBtn = document.getElementById(`lang-${currentLang}`);
+            if (activeBtn) {
+                activeBtn.style.backgroundColor = 'var(--accent-color)';
+                activeBtn.style.borderColor = 'var(--accent-color)';
+                activeBtn.style.color = '#0f172a';
+            }
+            
+            checkHealth(); 
+        }
+
+        const llmProvider = document.getElementById('llm-provider');
+        const llmModel = document.getElementById('llm-model');
+        const llmBase = document.getElementById('llm-base');
+        const llmKey = document.getElementById('llm-key');
+        const llmReasoning = document.getElementById('llm-reasoning');
+        const saveLlmBtn = document.getElementById('save-llm');
+
+        function loadLlmConfig() {
+            const config = JSON.parse(localStorage.getItem('frog_llm_config') || '{}');
+            if (config.provider) llmProvider.value = config.provider;
+            if (config.model) llmModel.value = config.model;
+            if (config.apiBase) llmBase.value = config.apiBase;
+            if (config.key) llmKey.value = config.key;
+            if (config.reasoning) llmReasoning.value = config.reasoning;
+        }
+
+        saveLlmBtn.onclick = () => {
+            const t = translations[currentLang];
+            const config = {
+                provider: llmProvider.value,
+                model: llmModel.value,
+                apiBase: llmBase.value,
+                key: llmKey.value,
+                reasoning: llmReasoning.value
+            };
+            localStorage.setItem('frog_llm_config', JSON.stringify(config));
+            alert(t.save_success);
+        };
+
+        document.getElementById('lang-en').onclick = () => {
+            currentLang = 'en';
+            updateLanguage();
+        };
+
+        document.getElementById('lang-zh').onclick = () => {
+            currentLang = 'zh';
+            updateLanguage();
+        };
+
+        loadLlmConfig();
+        updateLanguage();
+
+        const API_BASE_URL = 'http://127.0.0.1:8000';
+
+        async function checkHealth() {
+            const t = translations[currentLang];
+            const statusDot = document.getElementById('statusDot');
+            try {
+                const res = await axios.get(`${API_BASE_URL}/health`);
+                brainStatus.innerText = t.online;
+                brainStatus.style.color = '#4ade80';
+                if (statusDot) statusDot.style.background = '#4ade80';
+            } catch (e) {
+                brainStatus.innerText = t.offline;
+                brainStatus.style.color = '#f87171';
+                if (statusDot) statusDot.style.background = '#f87171';
+            }
+        }
+
+        setInterval(checkHealth, 3000);
+
+        dropZone.ondragover = (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        };
+
+        dropZone.ondragleave = () => {
+            dropZone.classList.remove('dragover');
+        };
+
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+
+            uploadFeedback.innerHTML = '';
+            dropText.style.display = 'none';
+            uploadProgress.style.display = 'block';
+            progressBar.style.width = '0%';
+            
+            const formData = new FormData();
+            
+            for (let file of files) {
+                // Electron specific path handling
+                if (typeof require !== 'undefined' && file.path) {
+                    try {
+                        const fs = require('fs');
+                        if (fs.existsSync(file.path)) {
+                            const fileBuffer = fs.readFileSync(file.path);
+                            const blob = new Blob([fileBuffer], { type: file.type || 'application/octet-stream' });
+                            formData.append('files', blob, file.name);
+                            continue;
+                        }
+                    } catch (err) {
+                        console.warn('Electron File API failed, falling back to browser API', err);
+                    }
+                }
+                formData.append('files', file);
+            }
+
+            try {
+                setTimeout(() => { if (progressBar.style.width === '0%') progressBar.style.width = '35%'; }, 100);
+                
+                const res = await axios.post(`${API_BASE_URL}/agent/generate`, formData, {
+                    onUploadProgress: (progressEvent) => {
+                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        progressBar.style.width = Math.max(35, percentCompleted) + '%';
+                    }
+                });
+                
+                progressBar.style.width = '100%';
+                uploadFeedback.innerHTML = `<div style="padding: 12px; background: rgba(74, 222, 128, 0.1); border: 1px solid #4ade80; border-radius: 8px; color: #4ade80; font-weight: 600;">✓ ${translations[currentLang].agent_ready.replace('{n}', files.length)}</div>`;
+                
+                setTimeout(() => {
+                    dropText.style.display = 'block';
+                    uploadProgress.style.display = 'none';
+                    progressBar.style.width = '0%';
+                    fileInput.value = '';
+                }, 3000);
+                
+                loadKnowledgeBase();
+            } catch (err) {
+                console.error('Upload error:', err);
+                const errorDetail = err.response?.data?.detail || err.message;
+                uploadFeedback.innerHTML = `<div style="padding: 12px; background: rgba(248, 113, 113, 0.1); border: 1px solid #f87171; border-radius: 8px; color: #f87171; font-weight: 600;">✗ ${translations[currentLang].upload_failed}<br><small>${errorDetail}</small></div>`;
+                dropText.style.display = 'block';
+                uploadProgress.style.display = 'none';
+            }
+        }
+
+        dropZone.ondrop = async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        };
+
+        function formatMessage(msg) {
+            if (!msg) return '';
+            
+            let formatted = msg;
+            
+            formatted = formatted
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            formatted = formatted.replace(/^### (.*?)$/gm, '<h4 style="margin:12px 0 6px 0;color:#60a5fa;font-size:1.05em;">$1</h4>');
+            formatted = formatted.replace(/^## (.*?)$/gm, '<h3 style="margin:14px 0 8px 0;color:#a78bfa;font-size:1.1em;">$1</h3>');
+            formatted = formatted.replace(/^# (.*?)$/gm, '<h2 style="margin:16px 0 10px 0;color:#f472b6;font-size:1.2em;">$1</h2>');
+            
+            formatted = formatted.replace(/^- (.*?)$/gm, '<li style="margin-left:20px;list-style-type:disc;">$1</li>');
+            formatted = formatted.replace(/^(\d+)\. (.*?)$/gm, '<li style="margin-left:20px;list-style-type:decimal;">$2</li>');
+            
+            formatted = formatted.replace(/```([\s\S]*?)```/g, 
+                '<pre style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:12px;margin:8px 0;overflow-x:auto;font-family:Consolas,monospace;font-size:0.85em;color:#22c55e;">$1</pre>');
+            
+            formatted = formatted.replace(/\n/g, '<br>');
+            
+            return formatted;
+        }
+
+        // Auto-scroll logic with ResizeObserver
+        const chatLogElem = document.getElementById('chatLog');
+        const consoleLogElem = document.getElementById('consoleLog');
+        
+        const createScrollObserver = (elem) => {
+            let shouldAutoScroll = true;
+            elem.addEventListener('scroll', () => {
+                const threshold = 50;
+                shouldAutoScroll = (elem.scrollHeight - elem.scrollTop - elem.clientHeight) < threshold;
+            });
+            const observer = new ResizeObserver(() => {
+                if (shouldAutoScroll) {
+                    elem.scrollTo({ top: elem.scrollHeight, behavior: 'smooth' });
+                }
+            });
+            observer.observe(elem);
+        };
+        
+        createScrollObserver(chatLogElem);
+        createScrollObserver(consoleLogElem);
+
+        function addLog(msg, type = 'ai') {
+            const container = document.createElement('div');
+            container.className = `msg-container msg-${type} ${ (type === 'system' && (msg.includes('正在') || msg.includes('Thinking') || msg.includes('Executing step'))) ? 'pulse' : '' }`;
+            
+            if (type === 'system' || type === 'error') {
+                const isObs = msg.includes('Observation') || msg.includes('观察');
+                const parts = msg.split(': ');
+                const header = parts[0];
+                const content = parts.slice(1).join(': ');
+
+                container.innerHTML = `
+                    <div class="process-log ${type === 'error' ? 'error' : ''} ${isObs ? 'observation' : ''}">
+                        <span>${header}:</span>
+                        <div class="log-content">${content || msg}</div>
+                    </div>
+                `;
+                consoleLogElem.appendChild(container);
+            } else {
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.innerHTML = type === 'ai' ? formatMessage(msg) : msg;
+                
+                const label = document.createElement('div');
+                label.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; padding: 0 4px; font-weight: 600;';
+                label.innerText = type === 'ai' ? 'FROG AI' : 'USER';
+                
+                container.appendChild(label);
+                container.appendChild(bubble);
+                chatLogElem.appendChild(container);
+            }
+        }
+
+        let chatHistory = [];
+        let currentTaskId = null;
+        
+        async function retrieveExpertKnowledge(query) {
+            try {
+                const res = await axios.post(`${API_BASE_URL}/expert/retrieve`, {
+                    query: query,
+                    top_k: 3
+                });
+                return res.data.results || [];
+            } catch (e) {
+                console.error('Failed to retrieve expert knowledge:', e);
+                return [];
+            }
+        }
+
+        async function sendMessage() {
+            const cmd = cmdInput.value.trim();
+            if (!cmd) return;
+            
+            addLog(cmd, 'user');
+            cmdInput.value = '';
+            
+            chatHistory.push({
+                role: 'user',
+                content: cmd
+            });
+            
+            try {
+                const config = JSON.parse(localStorage.getItem('frog_llm_config') || '{}');
+                
+                const expertKnowledge = await retrieveExpertKnowledge(cmd);
+                
+                let systemContent = 'You are a helpful AI assistant. You help users with their tasks and answer questions professionally.';
+                
+                if (expertKnowledge.length > 0) {
+                    systemContent += '\n\nHere is some relevant expert knowledge for this conversation:\n';
+                    expertKnowledge.forEach((k, i) => {
+                        systemContent += `\n${i + 1}. ${k.title}\n${k.content}\n`;
+                    });
+                }
+                
+                const messages = [
+                    { role: 'system', content: systemContent },
+                    ...chatHistory
+                ];
+                
+                addLog(currentLang === 'zh' ? '正在创建任务...' : 'Creating task...', 'system');
+                
+                const createTaskRes = await axios.post(`${API_BASE_URL}/task/create`, {
+                    messages: messages,
+                    api_key: config.key || '',
+                    base_url: config.apiBase || '',
+                    model: config.model || 'gpt-3.5-turbo',
+                    reasoning_effort: config.reasoning || 'medium',
+                    provider: config.provider || 'openai'
+                });
+                
+                currentTaskId = createTaskRes.data.task_id;
+                
+                let taskStatus = createTaskRes.data;
+                let stepCount = 0;
+                
+                while (stepCount < 10) {
+                    stepCount++;
+                    
+                    const consoleLog = document.getElementById('consoleLog');
+                    const lastMsg = consoleLog.lastElementChild;
+                    if (lastMsg && (lastMsg.querySelector('.process-log') && (lastMsg.innerText.includes('正在') || lastMsg.innerText.includes('Thinking') || lastMsg.innerText.includes('Executing step')))) {
+                        consoleLog.removeChild(lastMsg);
+                    }
+                    
+                    if (taskStatus.status === 'WAITING_HUMAN_INPUT') {
+                        const promptMsg = taskStatus.human_input_prompt || taskStatus.human_input_pending || (currentLang === 'zh' ? '请提供所需信息：' : 'Please provide the required information:');
+                        
+                        addLog(`🙋 ${currentLang === 'zh' ? 'AI 需要您的输入' : 'AI needs your input'}: ${promptMsg}`, 'system');
+
+                        // Show an inline input panel — Electron doesn't support window.prompt()
+                        const humanInput = await new Promise((resolve) => {
+                            const panel = document.createElement('div');
+                            panel.style.cssText = 'display:flex;gap:8px;padding:12px 0;align-items:center;';
+                            
+                            const inp = document.createElement('input');
+                            inp.type = 'text';
+                            inp.placeholder = currentLang === 'zh' ? '输入你的回答...' : 'Type your answer...';
+                            inp.style.cssText = 'flex:1;background:var(--bg-card);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;color:white;font-size:0.9em;outline:none;';
+                            
+                            const btn = document.createElement('button');
+                            btn.innerText = currentLang === 'zh' ? '提交' : 'Submit';
+                            btn.style.cssText = 'background:var(--accent);color:var(--bg-deep);border:none;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:0.9em;';
+                            
+                            const submit = () => {
+                                const val = inp.value.trim();
+                                if (!val) return;
+                                chatLogElem.removeChild(panel);
+                                resolve(val);
+                            };
+                            
+                            btn.onclick = submit;
+                            inp.onkeypress = (e) => { if (e.key === 'Enter') submit(); };
+                            
+                            panel.appendChild(inp);
+                            panel.appendChild(btn);
+                            chatLogElem.appendChild(panel);
+                            inp.focus();
+                        });
+                        
+                        if (humanInput) {
+                            addLog(humanInput, 'user');
+                            await axios.post(`${API_BASE_URL}/task/${currentTaskId}/resume`, {
+                                user_input: humanInput
+                            });
+                        } else {
+                            break;
+                        }
+                    }
+
+                    
+                    if (taskStatus.status === 'COMPLETED') {
+                        const finalAnswer = taskStatus.final_answer || taskStatus.final_result || (currentLang === 'zh' ? '任务完成' : 'Task completed');
+                        addLog(finalAnswer, 'ai');
+                        chatHistory.push({
+                            role: 'assistant',
+                            content: finalAnswer
+                        });
+                        break;
+                    }
+                    
+                    if (taskStatus.status === 'FAILED') {
+                        addLog(currentLang === 'zh' ? `任务失败: ${taskStatus.error}` : `Task failed: ${taskStatus.error}`, 'error');
+                        break;
+                    }
+                    
+                    addLog(currentLang === 'zh' ? '正在执行步骤...' : 'Executing step...', 'system');
+                    
+                    try {
+                        const stepRes = await axios.post(`${API_BASE_URL}/task/${currentTaskId}/step`);
+                        taskStatus = stepRes.data;
+                        
+                        if (taskStatus.current_step) {
+                            const step = taskStatus.current_step;
+                            if (step.type === 'thought') {
+                                addLog(`${currentLang === 'zh' ? '🤔 思考: ' : '🤔 Thought: '}${step.content}`, 'system');
+                            } else if (step.type === 'action') {
+                                addLog(`${currentLang === 'zh' ? '🔧 执行工具: ' : '🔧 Executing tool: '}${step.tool_name}`, 'system');
+                            }
+                        }
+                        
+                        if (taskStatus.steps && taskStatus.steps.length > 0) {
+                            const lastStep = taskStatus.steps[taskStatus.steps.length - 1];
+                            if (lastStep.observation) {
+                                const obs = lastStep.observation;
+                                let obsContent = '';
+                                if (typeof obs.content === 'string') {
+                                    obsContent = obs.content;
+                                } else {
+                                    obsContent = JSON.stringify(obs.content, null, 2);
+                                }
+                                addLog(`${currentLang === 'zh' ? '👁️ 观察结果: ' : '👁️ Observation: '}${obsContent}`, 'system');
+                            }
+                        }
+                    } catch (stepError) {
+                        console.error('Step execution error:', stepError);
+                        addLog(currentLang === 'zh' ? '步骤执行失败，检查任务状态...' : 'Step execution failed, checking task status...', 'system');
+                        
+                        try {
+                            const taskRes = await axios.get(`${API_BASE_URL}/task/${currentTaskId}`);
+                            taskStatus = taskRes.data;
+                        } catch (e) {
+                            console.error('Failed to get task status:', e);
+                            break;
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Task error:', error);
+                const t = translations[currentLang];
+                addLog(currentLang === 'zh' ? `对话失败: ${error.response?.data?.detail || error.message}` : `Chat failed: ${error.response?.data?.detail || error.message}`, 'error');
+                
+                chatHistory.pop();
+            }
+        }
+        
+        sendBtn.onclick = sendMessage;
+        
+        cmdInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        document.getElementById('clearHistoryBtn').onclick = () => {
+            const t = translations[currentLang];
+            if (confirm(t.confirm_clear_history)) {
+                chatHistory = [];
+                document.getElementById('chatLog').innerHTML = '';
+                document.getElementById('consoleLog').innerHTML = '<div style="color: #475569; font-style: italic; font-family: \'Cascadia Code\', monospace;">[System Daemon Initialized...]</div>';
+            }
+        };
+
+        const summarizeBtnElem = document.getElementById('summarizeBtn');
+        if (summarizeBtnElem) summarizeBtnElem.onclick = summarizeAndSaveConversation;
+
+        const navItems = document.querySelectorAll('.nav-item');
+        const viewSections = document.querySelectorAll('.view-section');
+        const navFactory = document.getElementById('nav-factory');
+
+        function switchView(viewId, navId) {
+            const section = document.getElementById(viewId);
+            if (!section) {
+                console.warn(`View section ${viewId} not found.`);
+                return;
+            }
+            
+            viewSections.forEach(s => s.classList.remove('active'));
+            navItems.forEach(item => item.classList.remove('active'));
+            
+            section.classList.add('active');
+            const navItem = document.getElementById(navId);
+            if (navItem) navItem.classList.add('active');
+            
+            if (viewId === 'view-plugins') {
+                loadPlugins().catch(err => console.error('Failed to load plugins:', err));
+            }
+            
+            if (viewId === 'view-command') {
+                setTimeout(() => {
+                    const cmdInput = document.getElementById('cmdInput');
+                    if (cmdInput) cmdInput.focus();
+                }, 100);
+            }
+        }
+
+        navItems.forEach(item => {
+            if (item.id && item.id.startsWith('nav-item-')) {
+                item.onclick = () => {
+                    const viewId = `view-${item.id.replace('nav-item-', '')}`;
+                    switchView(viewId, item.id);
+                };
+            }
+        });
+
+        navFactory.onclick = () => switchView('view-command', 'nav-item-command');
+
+        const learningTabs = document.querySelectorAll('.learning-tab');
+        const learningContents = document.querySelectorAll('.learning-content');
+
+        function switchLearningTab(tabId, contentId) {
+            learningTabs.forEach(tab => tab.classList.remove('active'));
+            learningContents.forEach(content => content.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            document.getElementById(contentId).classList.add('active');
+        }
+
+        document.getElementById('tab-documents').onclick = () => switchLearningTab('tab-documents', 'content-documents');
+        const tabKnowledge = document.getElementById('tab-knowledge');
+        if (tabKnowledge) tabKnowledge.onclick = () => {
+            switchLearningTab('tab-knowledge', 'content-knowledge');
+            loadKnowledgeBase();
+        };
+        const tabExpert = document.getElementById('tab-expert');
+        if (tabExpert) tabExpert.onclick = () => {
+            switchLearningTab('tab-expert', 'content-expert');
+            loadExpertKnowledge();
+        };
+
+
+        async function loadKnowledgeBase() {
+            const t = translations[currentLang];
+            const knowledgeList = document.getElementById('knowledgeList');
+            knowledgeList.innerHTML = '';
+            
+            try {
+                const [docRes, webRes] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/agent/knowledge`).catch(() => ({ data: { files: [] } })),
+                    axios.get(`${API_BASE_URL}/web/knowledge`)
+                ]);
+                
+                const allFiles = [];
+                
+                if (docRes.data && docRes.data.files) {
+                    docRes.data.files
+                        .filter(f => !f.filename.startsWith('meta_') && !f.filename.endsWith('.json'))
+                        .forEach(f => { allFiles.push({ ...f, type: 'document' }); });
+                }
+                
+                if (webRes.data && webRes.data.files) {
+                    webRes.data.files.forEach(f => {
+                        allFiles.push({ ...f, type: 'web' });
+                    });
+                }
+                
+                if (allFiles.length === 0) {
+                    knowledgeList.innerHTML = `<p style="color: #94a3b8; grid-column: 1 / -1;">${t.no_knowledge}</p>`;
+                    return;
+                }
+                
+                allFiles.sort((a, b) => new Date(b.created || b.date) - new Date(a.created || a.date));
+                
+                allFiles.forEach(file => {
+                    const div = document.createElement('div');
+                    div.className = 'knowledge-card';
+                    div.style.position = 'relative';
+                    const date = new Date(file.created || file.date);
+                    const typeLabel = file.type === 'document' ? t.doc_knowledge : t.web_knowledge;
+                    const typeColor = file.type === 'document' ? '#38bdf8' : '#818cf8';
+                    const tagsHtml = file.tags && file.tags.length
+                        ? file.tags.map(tag => `<span style="display:inline-block;padding:2px 8px;background:rgba(56,189,248,0.1);color:#38bdf8;border:1px solid rgba(56,189,248,0.2);border-radius:4px;font-size:0.7em;margin:2px 2px 0 0;">${tag}</span>`).join('')
+                        : '';
+                    div.innerHTML = `
+                        <button class="delete-knowledge-btn" data-filename="${file.filename || file.name}" data-type="${file.type}" style="position: absolute; top: 8px; right: 8px; background: #ef4444; border: none; color: white; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; opacity:0;" title="删除">×</button>
+                        <h4 style="margin-right: 30px; font-size:0.9em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${file.filename || file.name}</h4>
+                        <p style="margin: 4px 0 2px 0; color: ${typeColor}; font-size:0.75em;">${typeLabel}</p>
+                        ${tagsHtml ? `<div style="margin: 4px 0;">${tagsHtml}</div>` : ''}
+                        <p style="margin:6px 0 0 0; color:#64748b; font-size:0.72em;">${date.toLocaleString()} · ${((file.size || 0) / 1024).toFixed(1)} KB</p>
+                    `;
+                    // Show delete button on hover
+                    div.addEventListener('mouseenter', () => div.querySelector('.delete-knowledge-btn').style.opacity = '1');
+                    div.addEventListener('mouseleave', () => div.querySelector('.delete-knowledge-btn').style.opacity = '0');
+                    knowledgeList.appendChild(div);
+                });
+
+                document.querySelectorAll('.delete-knowledge-btn').forEach(btn => {
+                    btn.onclick = async (e) => {
+                        e.stopPropagation();
+                        const filename = btn.dataset.filename;
+                        const type = btn.dataset.type;
+                        if (confirm(`确定要删除 "${filename}" 吗？`)) {
+                            try {
+                                await axios.post(`${API_BASE_URL}/knowledge/delete`, {
+                                    filename: filename,
+                                    type: type
+                                });
+                                loadKnowledgeBase();
+                            } catch (err) {
+                                console.error('Delete failed:', err);
+                                alert('删除失败：' + (err.response?.data?.detail || err.message));
+                            }
+                        }
+                    };
+
+                    btn.onmouseover = () => {
+                        btn.style.background = '#dc2626';
+                    };
+                    btn.onmouseout = () => {
+                        btn.style.background = '#ef4444';
+                    };
+                });
+            } catch (err) {
+                console.error(err);
+                knowledgeList.innerHTML = `<p style="color: #94a3b8; grid-column: 1 / -1;">${t.no_knowledge}</p>`;
+            }
+        }
+
+        async function loadExpertKnowledge() {
+            const t = translations[currentLang];
+            const expertList = document.getElementById('expertList');
+            expertList.innerHTML = '<p style="color: #94a3b8; grid-column: 1 / -1;">Loading...</p>';
+            
+            try {
+                const res = await axios.get(`${API_BASE_URL}/expert/list`);
+                
+                if (!res.data.files || res.data.files.length === 0) {
+                    expertList.innerHTML = `<p style="color: #94a3b8; grid-column: 1 / -1;">${t.no_expert_knowledge}</p>`;
+                    return;
+                }
+                
+                expertList.innerHTML = '';
+                res.data.files.forEach(file => {
+                    const div = document.createElement('div');
+                    div.className = 'knowledge-card';
+                    const tagsHtml = file.tags && file.tags.length
+                        ? file.tags.map(tag => `<span style="display:inline-block;padding:2px 8px;background:rgba(167,139,250,0.1);color:#a78bfa;border:1px solid rgba(167,139,250,0.2);border-radius:4px;font-size:0.7em;margin:2px 2px 0 0;">${tag}</span>`).join('')
+                        : '';
+                    div.innerHTML = `
+                        <h4 style="font-size:0.9em;">${file.title}</h4>
+                        ${tagsHtml ? `<div style="margin: 4px 0;">${tagsHtml}</div>` : ''}
+                        <p style="font-size:0.75em; color: #64748b; margin-top: 6px;">${new Date(file.created).toLocaleString()}</p>
+                    `;
+                    expertList.appendChild(div);
+                });
+            } catch (err) {
+                console.error(err);
+                expertList.innerHTML = `<p style="color: #ef4444; grid-column: 1 / -1;">${t.failed_load_expert}</p>`;
+            }
+        }
+
+        document.getElementById('refreshExpertBtn').onclick = loadExpertKnowledge;
+
+        // Plugin Management Logic
+        const refreshPluginsBtn = document.getElementById('refreshPluginsBtn');
+        const uploadPluginBtn = document.getElementById('uploadPluginBtn');
+        const pluginZipInput = document.getElementById('pluginZipInput');
+        const pluginList = document.getElementById('pluginList');
+
+        async function loadPlugins() {
+            const t = translations[currentLang];
+            try {
+                const res = await axios.get(`${API_BASE_URL}/tools/list`);
+                const tools = res.data.tools || [];
+                pluginList.innerHTML = '';
+                
+                if (tools.length === 0) {
+                    pluginList.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-secondary);">${t.no_plugins}</div>`;
+                    return;
+                }
+
+                tools.forEach(tool => {
+                    const card = document.createElement('div');
+                    card.className = 'tool-card';
+                    
+                    const isBuiltin = tool.source === 'builtin';
+                    const isGenerated = tool.source === 'generated';
+                    
+                    let badgeClass = 'badge-uploaded';
+                    let badgeText = t.source_uploaded;
+                    if (isBuiltin) {
+                        badgeClass = 'badge-builtin';
+                        badgeText = t.source_system;
+                    } else if (isGenerated) {
+                        badgeClass = 'badge-generated';
+                        badgeText = t.source_generated;
+                    }
+
+                    card.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                            <div class="tool-badge ${badgeClass}">${badgeText}</div>
+                            ${!isBuiltin ? `<button class="delete-tool-btn" onclick="deleteTool('${tool.id}')" title="Delete Tool">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>` : ''}
+                        </div>
+                        <h4 title="${tool.id || tool.name}">${tool.id || tool.name}</h4>
+                        <p title="${tool.description || ''}">${tool.description || 'No description provided.'}</p>
+                    `;
+                    pluginList.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+                if (typeof addLog === 'function') addLog('Load plugins failed: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteTool(id) {
+            const t = translations[currentLang];
+            if (!confirm(t.delete_confirm)) return;
+            
+            try {
+                await axios.delete(`${API_BASE_URL}/tools/${id}`);
+                addLog(t.delete_success, 'system');
+                loadPlugins();
+            } catch (err) {
+                console.error(err);
+                addLog('Delete failed: ' + (err.response?.data?.detail || err.message), 'error');
+            }
+        }
+
+        if (uploadPluginBtn) {
+            uploadPluginBtn.onclick = () => pluginZipInput.click();
+        }
+
+        if (pluginZipInput) {
+            pluginZipInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const t = translations[currentLang];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    uploadPluginBtn.disabled = true;
+                    uploadPluginBtn.innerHTML = `<span>${t.uploading}</span>`;
+                    
+                    await axios.post(`${API_BASE_URL}/tools/upload`, formData);
+                    
+                    addLog(t.upload_success, 'system');
+                    loadPlugins();
+                } catch (err) {
+                    console.error(err);
+                    addLog('Upload failed: ' + (err.response?.data?.detail || err.message), 'error');
+                } finally {
+                    uploadPluginBtn.disabled = false;
+                    uploadPluginBtn.innerHTML = `
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        Upload ZIP
+                    `;
+                    pluginZipInput.value = '';
+                }
+            };
+        }
+
+        if (refreshPluginsBtn) refreshPluginsBtn.onclick = loadPlugins;
+
+        async function summarizeAndSaveConversation() {
+            const t = translations[currentLang];
+            
+            if (chatHistory.length < 2) {
+                alert(t.not_enough_history);
+                return;
+            }
+            
+            const config = JSON.parse(localStorage.getItem('frog_llm_config') || '{}');
+            if (!config.key) {
+                alert(t.no_api_key);
+                return;
+            }
+            
+            const title = prompt(t.enter_title, t.default_title);
+            if (!title) return;
+            
+            const tags = prompt(t.enter_tags, t.default_tags);
+            const tagList = tags ? tags.split(',').map(t => t.trim()) : [];
+            
+            try {
+                addLog(t.summarizing, 'system');
+                
+                const conversationText = chatHistory.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n\n');
+                
+                const summaryPrompt = `Please summarize the following conversation into a structured expert knowledge document. Include key points, lessons learned, and any important conclusions. Format it as a clear, professional knowledge entry.\n\n${conversationText}`;
+                
+                const response = await axios.post(`${API_BASE_URL}/chat`, {
+                    messages: [
+                        { role: 'system', content: 'You are an expert knowledge organizer. You create clear, structured knowledge documents from conversations.' },
+                        { role: 'user', content: summaryPrompt }
+                    ],
+                    api_key: config.key || '',
+                    base_url: config.apiBase || '',
+                    model: config.model || 'gpt-3.5-turbo',
+                    reasoning_effort: config.reasoning || 'medium'
+                });
+                
+                const summaryContent = response.data.message;
+                
+                await axios.post(`${API_BASE_URL}/expert/save`, {
+                    title: title,
+                    content: summaryContent,
+                    tags: tagList
+                });
+                
+                const chatLog = document.getElementById('chatLog');
+                chatLog.removeChild(chatLog.lastChild);
+                addLog(t.summarize_success, 'system');
+            } catch (err) {
+                console.error(err);
+                const chatLog = document.getElementById('chatLog');
+                if (chatLog.lastChild && chatLog.lastChild.textContent.includes('Summarizing') || chatLog.lastChild && chatLog.lastChild.textContent.includes('正在总结')) {
+                    chatLog.removeChild(chatLog.lastChild);
+                }
+                addLog(t.summarize_failed + ' ' + (err.response?.data?.detail || err.message), 'error');
+            }
+        }
+
+        updateLanguage();
+    </script>
+</body>
+</html>
