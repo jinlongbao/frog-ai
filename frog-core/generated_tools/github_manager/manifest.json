@@ -1,0 +1,18 @@
+{
+  "id": "github_manager",
+  "name": "github_manager",
+  "version": "1.0.0",
+  "description": "Fetch the latest 5 open GitHub issues for a public repository using the GitHub API. Accepts owner and repo parameters with defaults owner=jinlongbao and repo=frog-ai, and returns clear structured issue data including title, author, and body.",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "params": {
+        "type": "object",
+        "description": "Parameters for the tool"
+      }
+    },
+    "required": []
+  },
+  "created_at": "2026-03-21T13:53:05.966830"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "get_public_ip",
+  "name": "get_public_ip",
+  "version": "1.0.0",
+  "description": "Get the current public internet IP address by querying reliable IP echo services over HTTPS with fallbacks.",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "params": {
+        "type": "object",
+        "description": "Parameters for the tool"
+      }
+    },
+    "required": []
+  },
+  "created_at": "2026-03-20T15:26:48.558682"
+}

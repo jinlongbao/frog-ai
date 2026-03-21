@@ -1,0 +1,18 @@
+{
+  "id": "auto_blogger",
+  "name": "auto_blogger",
+  "version": "1.0.0",
+  "description": "Read latest 5 git commit subjects and README intro from the nearest git repository, then return combined project briefing for article drafting.",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "params": {
+        "type": "object",
+        "description": "Parameters for the tool"
+      }
+    },
+    "required": []
+  },
+  "created_at": "2026-03-21T14:28:52.242399"
+}

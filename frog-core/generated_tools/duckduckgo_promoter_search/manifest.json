@@ -1,0 +1,18 @@
+{
+  "id": "duckduckgo_promoter_search",
+  "name": "duckduckgo_promoter_search",
+  "version": "1.0.0",
+  "description": "Search DuckDuckGo for relevant external discussions or technical blog posts about AI agents/open source personal AI, and return structured results with title, URL, and summary.",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "params": {
+        "type": "object",
+        "description": "Parameters for the tool"
+      }
+    },
+    "required": []
+  },
+  "created_at": "2026-03-21T13:58:53.667975"
+}

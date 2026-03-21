@@ -1,0 +1,18 @@
+{
+  "id": "community_promoter_reply_generator",
+  "name": "community_promoter_reply_generator",
+  "version": "1.0.0",
+  "description": "Generate soft-promotion English reply templates for Reddit, Hacker News, and technical blog comments to naturally mention a GitHub repository link in relevant AI agent discussions.",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "params": {
+        "type": "object",
+        "description": "Parameters for the tool"
+      }
+    },
+    "required": []
+  },
+  "created_at": "2026-03-21T14:07:25.244669"
+}

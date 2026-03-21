@@ -1,0 +1,30 @@
+{
+  "id": "read_webpage_summarize_and_save_knowledge",
+  "name": "read_webpage_summarize_and_save_knowledge",
+  "version": "1.0.0",
+  "description": "Read a webpage, summarize key points in Chinese, and save the summary into project memory/knowledge for later retrieval.",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "The webpage URL to read."
+      },
+      "memory_key": {
+        "type": "string",
+        "description": "The key under which the summary will be stored."
+      },
+      "summary_text": {
+        "type": "string",
+        "description": "The prepared summary text to save."
+      }
+    },
+    "required": [
+      "url",
+      "memory_key",
+      "summary_text"
+    ]
+  },
+  "created_at": "2026-03-20T17:39:14.125541"
+}

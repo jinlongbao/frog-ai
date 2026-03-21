@@ -24,8 +24,11 @@ frog-core/knowledge/data/
 frog-core/knowledge/*.json
 !frog-core/knowledge/project_memory.json
 !frog-core/knowledge/goals.json
-frog-core/generated_tools/
+frog-core/dynamic_tools/*.json
 tmp/
+
+# Ignore any newly generated plugins (Git will still track the built-in ones you already committed)
+frog-core/plugins/*
 
 # IDEs
 .vscode/

@@ -187,7 +187,7 @@ Action Input: {{ "action": "create", "tool_name": "usd_to_cny", "description": "
 6. context_compressor: **CALL THIS at step 8+ to compress old steps and prevent context overflow.**
 7. notify_user: Send a desktop notification to alert the user (title, message). Use after completing long background tasks.
 8. task_scheduler: Schedule a prompt to run later (delay_seconds, repeat_interval_seconds). Use for recurring or deferred tasks.
-9. multi_agent: Spawn 2-8 parallel sub-agents each with their own prompt (tasks: [{label, prompt}]). Use for parallel research or multi-workstream tasks.
+9. multi_agent: Spawn 2-8 parallel sub-agents each with their own prompt (tasks: [{{ "label": "name", "prompt": "instruction" }}]). Use for parallel research or multi-workstream tasks.
 10. goal_tracker: Manage long-term goals across sessions (actions: add, list, update_progress, complete, delete). Review active goals at the start of complex tasks.
 
 ### CUSTOM CAPABILITIES (DYNAMIC):
