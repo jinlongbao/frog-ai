@@ -141,3 +141,10 @@ def execute(params: dict, context: dict) -> dict:
 ## 🏭 Industry Templates
 Frog ships with sample JSON templates in `templates/` (e.g., `coder.json`, `researcher.json`). 
 You can load these to instantly reconfigure Frog's persona, initial goals, and default allowed plugins for specific specialized jobs!
+
+---
+
+## ⚖️ License
+
+This project is open-source and released under the [MIT License](LICENSE). 
+You are free to use, modify, and distribute this software, as long as the original copyright and license notice are included.
