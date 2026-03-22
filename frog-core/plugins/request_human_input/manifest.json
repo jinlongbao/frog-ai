@@ -1,0 +1,21 @@
+{
+  "id": "request_human_input",
+  "name": "Request Human Input",
+  "description": "Call this tool when you encounter a physical obstacle (e.g., need a scan, a connection) or need critical user guidance/confirmation to proceed. The task will pause until the user responds.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "description": "The specific question or instruction for the human (e.g., 'Please scan the QR code and paste the token')."
+      },
+      "input_type": {
+        "type": "string",
+        "enum": ["text", "confirmation", "file"],
+        "default": "text",
+        "description": "Type of input expected from the user."
+      }
+    },
+    "required": ["prompt"]
+  }
+}

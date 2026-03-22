@@ -27,9 +27,8 @@ frog-core/knowledge/*.json
 frog-core/dynamic_tools/*.json
 tmp/
 
-# Ignore any newly generated plugins (Git will still track the built-in ones you already committed)
-frog-core/plugins/*
-
+# Ignore AI generated plugins (which go into generated_tools folder)
+frog-core/generated_tools/
 # IDEs
 .vscode/
 .idea/

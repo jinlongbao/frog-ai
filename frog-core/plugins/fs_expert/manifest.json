@@ -1,0 +1,25 @@
+{
+  "id": "fs_expert",
+  "name": "File System Expert",
+  "version": "1.0.1",
+  "description": "Read, write, list, delete, inspect, and check existence of files/directories on the local system.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["read", "write", "list", "delete", "exists", "info"],
+        "description": "The file operation to perform."
+      },
+      "path": {
+        "type": "string",
+        "description": "The target file or directory path (absolute or relative to project root)."
+      },
+      "content": {
+        "type": "string",
+        "description": "The content to write (required for 'write' action)."
+      }
+    },
+    "required": ["action", "path"]
+  }
+}

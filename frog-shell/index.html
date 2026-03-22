@@ -1233,15 +1233,16 @@
         const createScrollObserver = (elem) => {
             let shouldAutoScroll = true;
             elem.addEventListener('scroll', () => {
-                const threshold = 50;
+                const threshold = 150; // Increased threshold for safety
                 shouldAutoScroll = (elem.scrollHeight - elem.scrollTop - elem.clientHeight) < threshold;
             });
-            const observer = new ResizeObserver(() => {
+            // Fix: Use MutationObserver to detect when new child nodes are added
+            const observer = new MutationObserver(() => {
                 if (shouldAutoScroll) {
                     elem.scrollTo({ top: elem.scrollHeight, behavior: 'smooth' });
                 }
             });
-            observer.observe(elem);
+            observer.observe(elem, { childList: true, subtree: true, characterData: true });
         };
         
         createScrollObserver(chatLogElem);
