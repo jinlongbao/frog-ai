@@ -172,24 +172,33 @@ except Exception as e:
                     f.write(runner_code)
                     
                 # Execute isolated
+                out_txt = os.path.join(temp_dir, "stdout.txt")
+                err_txt = os.path.join(temp_dir, "stderr.txt")
                 try:
-                    proc = subprocess.run(
-                        [sys.executable, runner_file],
-                        cwd=os.path.dirname(index_path),
-                        timeout=30,
-                        capture_output=True,
-                        text=True
-                    )
+                    with open(out_txt, "w", encoding="utf-8") as f_out, open(err_txt, "w", encoding="utf-8") as f_err:
+                        proc = subprocess.run(
+                            [sys.executable, runner_file],
+                            cwd=os.path.dirname(index_path),
+                            timeout=30,
+                            stdout=f_out,
+                            stderr=f_err,
+                            text=True
+                        )
                     
                     if os.path.exists(out_file):
                         with open(out_file, "r", encoding="utf-8") as f:
                             return json.load(f)
                     else:
+                        stdout_str, stderr_str = "", ""
+                        try:
+                            with open(out_txt, "r", encoding="utf-8") as f: stdout_str = f.read()
+                            with open(err_txt, "r", encoding="utf-8") as f: stderr_str = f.read()
+                        except: pass
                         return {
                             "status": "error", 
                             "message": "Plugin execution crashed silently without generating output JSON.",
-                            "stdout": proc.stdout,
-                            "stderr": proc.stderr
+                            "stdout": stdout_str,
+                            "stderr": stderr_str
                         }
                         
                 except subprocess.TimeoutExpired:

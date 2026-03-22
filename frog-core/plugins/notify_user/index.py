@@ -95,7 +95,10 @@ def execute(params: dict, context: dict) -> dict:
         return {"status": "error", "message": f"Notification failed: {str(e)}"}
 
     if success:
-        print(f"[notify_user] 🔔 {title}: {message}")
+        try:
+            print(f"[notify_user] 🔔 {title}: {message}")
+        except UnicodeEncodeError:
+            print(f"[notify_user] [Notification] {title}: {message}")
         return {
             "status": "success",
             "message": f"Desktop notification sent: '{title}'",
@@ -103,7 +106,10 @@ def execute(params: dict, context: dict) -> dict:
         }
     else:
         # Fallback: at minimum print to console
-        print(f"\n{'='*50}\n🔔 FROG AI NOTIFICATION\n{title}\n{message}\n{'='*50}\n")
+        try:
+            print(f"\n{'='*50}\n🔔 FROG AI NOTIFICATION\n{title}\n{message}\n{'='*50}\n")
+        except UnicodeEncodeError:
+            print(f"\n{'='*50}\n[Notification] FROG AI\n{title}\n{message}\n{'='*50}\n")
         return {
             "status": "success",
             "message": "Notification sent via console fallback (no OS notification library installed)",
