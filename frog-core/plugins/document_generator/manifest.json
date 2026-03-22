@@ -1,0 +1,26 @@
+{
+  "id": "document_generator",
+  "name": "Native Document Generator",
+  "description": "Natively generates rich Office documents (.pptx, .docx). You MUST pass 'path' as an absolute path and 'content' as a JSON string. For PPT, 'content' must be an array of objects: [{'title': 'Slide 1', 'content': ['Point 1', 'Point 2']}]. For Word, 'content' must be: [{'heading': '...', 'paragraphs': ['...']}].",
+  "version": "1.0.0",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["create_ppt", "create_word"],
+        "description": "Which document format to generate."
+      },
+      "path": {
+        "type": "string",
+        "description": "Absolute path including filename and extension, e.g. C:\\Users\\...\\Desktop\\presentation.pptx"
+      },
+      "content": {
+        "type": "string",
+        "description": "A JSON-escaped string containing the structured document outline."
+      }
+    },
+    "required": ["action", "path", "content"]
+  }
+}

@@ -113,37 +113,39 @@
             font-weight: 700;
         }
 
-        /* Chat Area - Practical & Pro */
+        /* IDE Layout - Command Section */
         .command-section {
             flex: 1;
             display: flex;
-            flex-direction: row;
-            padding: 24px 40px 40px 40px;
+            flex-direction: column; /* IDE Vertical Split */
+            padding: 0;
             overflow: hidden;
-            gap: 24px;
+            min-height: 0; /* STOP INFINITE FLEX EXPANSION */
+            background: #1e1e1e; /* VS Code dark */
         }
 
         .chat-area {
-            flex: 1;
-            max-width: 55%;
+            flex: 2; /* Top 2/3 */
+            max-width: 100%;
             display: flex;
             flex-direction: column;
             min-height: 0;
             overflow: hidden;
-            padding: 0;
+            padding: 0 40px;
         }
 
         .console-area {
-            flex: 1;
-            background: #020617; /* Deeper black for terminal */
-            border-radius: 12px;
-            border: 1px solid var(--border);
+            flex: 1; /* Bottom 1/3 */
+            background: #000000; /* Deep terminal black */
+            border-radius: 0;
+            border-top: 1px solid var(--border);
+            border-left: none; border-right: none; border-bottom: none;
             margin: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             min-height: 0;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: inset 0 5px 15px rgba(0,0,0,0.5);
         }
         
         .console-header {
@@ -163,6 +165,7 @@
         #consoleLog {
             flex: 1;
             overflow-y: auto;
+            min-height: 0;
             padding: 16px;
             font-family: 'Cascadia Code', 'Consolas', monospace;
             font-size: 0.85em;
@@ -175,6 +178,7 @@
         #chatLog {
             flex: 1;
             overflow-y: auto;
+            min-height: 0;
             padding: 20px 10px 16px 10px;
             display: flex;
             flex-direction: column;
@@ -264,10 +268,11 @@
 
         /* Input Area - Sleek */
         .input-wrapper {
-            padding: 24px 0 40px 0;
+            padding: 20px 0;
             display: flex;
             gap: 12px;
             position: relative;
+            border-top: 1px solid rgba(255,255,255,0.05);
         }
 
         #cmdInput {
@@ -627,9 +632,83 @@
             transition: width 0.4s ease;
             box-shadow: 0 0 10px var(--accent-glow);
         }
+        
+        /* Initialization Wizard */
+        .wizard-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(2, 6, 23, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 40px;
+            -webkit-app-region: drag;
+        }
+        .wizard-card {
+            background: var(--bg-slate);
+            border: 1px solid var(--accent);
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%; max-width: 600px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 30px var(--accent-glow);
+            -webkit-app-region: no-drag;
+        }
+        .role-card {
+            border: 2px solid var(--border);
+            padding: 24px; border-radius: 12px;
+            cursor: pointer; transition: all 0.2s;
+            background: rgba(255,255,255,0.02);
+            text-align: left;
+        }
+        .role-card:hover { border-color: rgba(56, 189, 248, 0.5); transform: translateY(-2px); }
+        .role-card.selected {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.1);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
     </style>
 </head>
 <body>
+    <div id="initWizard" class="wizard-overlay" style="display: none;">
+        <div class="wizard-card">
+            <h2 style="margin-top: 0; color: var(--accent); font-size: 1.8em;">FROG AI : System Initialization</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 1.1em;">Configure your personal Autonomous Agent.</p>
+            
+            <div id="wizardStep1">
+                <h3 style="margin-bottom: 20px;">1. LLM API Configuration</h3>
+                <div class="input-group" style="margin-bottom: 16px;">
+                    <label>OpenAI/Compatible API Key</label>
+                    <input type="password" id="wizApiKey" placeholder="sk-..." autofocus>
+                </div>
+                <div class="input-group" style="margin-bottom: 30px;">
+                    <label>Base URL (Leave blank for official OpenAI)</label>
+                    <input type="text" id="wizBaseUrl" placeholder="https://api.openai.com/v1">
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="#" style="color: var(--text-secondary); text-decoration: none; font-size: 0.9em; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-secondary)'" onclick="skipWizard()">Skip for now</a>
+                    <button class="btn-action" onclick="nextWizardStep()">Next ➔</button>
+                </div>
+            </div>
+
+            <div id="wizardStep2" style="display: none;">
+                <h3 style="margin-bottom: 20px;">2. Load Industry Persona Template</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                    <div class="role-card" id="role-coder" onclick="selectRole('coder')">
+                        <h4 style="margin:0 0 10px 0; font-size: 1.2em; color: white;">💻 Software Engineer</h4>
+                        <p style="font-size: 0.85em; margin:0; color: #94a3b8; line-height: 1.5;">Specializes in code refactoring, bug fixing, and local CLI execution.</p>
+                    </div>
+                    <div class="role-card" id="role-researcher" onclick="selectRole('researcher')">
+                        <h4 style="margin:0 0 10px 0; font-size: 1.2em; color: white;">🔍 Data Researcher</h4>
+                        <p style="font-size: 0.85em; margin:0; color: #94a3b8; line-height: 1.5;">Optimized for internet search, parsing documents, and synthesis.</p>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <button class="btn-secondary" onclick="prevWizardStep()">← Back</button>
+                    <button class="btn-action" onclick="finishWizard()">Launch Agent 🚀</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="sidebar">
         <h2 id="nav-factory">FROG CORE</h2>
         <div class="nav-item active" id="nav-item-command" data-i18n="nav_command">AI Command</div>
@@ -1833,6 +1912,89 @@
                 addLog(t.summarize_failed + ' ' + (err.response?.data?.detail || err.message), 'error');
             }
         }
+        
+        // ------------- System Initialization Wizard Logic -------------
+        let selectedRole = null;
+        const fs = require('fs');
+        const path = require('path');
+        
+        function checkFirstRun() {
+            const config = localStorage.getItem('frog_llm_config');
+            const initialized = localStorage.getItem('frog_initialized');
+            if (!config || !initialized) {
+                document.getElementById('initWizard').style.display = 'flex';
+            }
+        }
+        
+        function nextWizardStep() {
+            const apiKey = document.getElementById('wizApiKey').value.trim();
+            const baseUrl = document.getElementById('wizBaseUrl').value.trim();
+            
+            if (!apiKey) {
+                alert("API Key is required to power the AI engine.");
+                return;
+            }
+            
+            // Generate robust default config
+            const config = {
+                apiBase: baseUrl || "https://api.openai.com/v1",
+                key: apiKey,
+                model: "gpt-4o",
+                reasoning: "medium"
+            };
+            localStorage.setItem('frog_llm_config', JSON.stringify(config));
+            
+            document.getElementById('wizardStep1').style.display = 'none';
+            document.getElementById('wizardStep2').style.display = 'block';
+        }
+        
+        function selectRole(role) {
+            selectedRole = role;
+            document.querySelectorAll('.role-card').forEach(el => el.classList.remove('selected'));
+            document.getElementById('role-' + role).classList.add('selected');
+        }
+        
+        function finishWizard() {
+            if (!selectedRole) {
+                alert("Please select a Persona template to give your Agent its foundational skills.");
+                return;
+            }
+            
+            try {
+                // Copy template directly into local project memory using Node's native file system
+                const templatePath = path.join(__dirname, '..', 'templates', `${selectedRole}.json`);
+                const destDir = path.join(__dirname, '..', 'frog-core', 'knowledge');
+                const destPath = path.join(destDir, 'project_memory.json');
+                
+                if (!fs.existsSync(destDir)) {
+                    fs.mkdirSync(destDir, { recursive: true });
+                }
+                
+                const templateData = fs.readFileSync(templatePath, 'utf8');
+                fs.writeFileSync(destPath, templateData);
+                
+                localStorage.setItem('frog_initialized', 'true');
+                document.getElementById('initWizard').style.display = 'none';
+                
+                if (typeof loadLlmConfig === 'function') loadLlmConfig();
+                
+                addLog(`🚀 System initialized successfully! Injecting [${selectedRole.toUpperCase()}] persona into the Agent...`, 'system');
+                
+            } catch (err) {
+                console.error("Failed to load template:", err);
+                alert("Failed to load the selected template. " + err.message);
+            }
+        }
+
+        function skipWizard() {
+            localStorage.setItem('frog_initialized', 'true');
+            document.getElementById('initWizard').style.display = 'none';
+            if (typeof loadLlmConfig === 'function') loadLlmConfig();
+            addLog(`System initialization skipped. You can configure the Agent later in the Settings panel.`, 'system');
+        }
+        
+        // Execute check slightly after DOM load
+        setTimeout(checkFirstRun, 500);
 
         updateLanguage();
     </script>
