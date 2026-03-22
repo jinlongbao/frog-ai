@@ -21,6 +21,8 @@ yarn-error.log*
 
 # Frog AI Specific
 frog-core/knowledge/data/
+frog-core/expert_knowledge/
+frog-core/web_knowledge/
 frog-core/knowledge/*.json
 !frog-core/knowledge/project_memory.json
 !frog-core/knowledge/goals.json
