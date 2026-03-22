@@ -10,22 +10,30 @@
   ![LLM Based](https://img.shields.io/badge/LLM-OpenAI_/_Gemini-412991?style=flat-square)
 </div>
 
-# Frog AI - Highly Autonomous Personal AI Agent
+# Frog AI V2 - The Autonomous Desktop Agent
 
-Frog AI is a deeply autonomous, cross-platform personal AI agent. It acts as a desktop-native expert that doesn't just answer questions, but actively **plans, executes, remembers, and self-heals**. 
+Frog AI is a deeply autonomous, cross-platform personal AI agent. It acts as a **desktop-native expert** that doesn't just answer questions, but actively **plans, executes, remembers, and self-evolves**.
 
-Built with a modern Electron frontend and a powerful Python FastApi backend, Frog gives AI the power to read your local files, execute shell commands in a sandbox, schedule background tasks, manage long-term goals, and even write its own plugins autonomously.
+V2 introduces a complete **IDE-style vertical split UI**, a **Pipeless Subprocess Sandbox**, and **Autonomous Tool Generation**, bridging the gap between a developer API and a consumer-ready AI Operating System.
 
 ---
 
-## 🚀 Core Features
+## ✨ What's New in V2?
+
+1. **IDE-Style Interface**: Frog now features a professional, highly productive layout mirroring VS Code. It separates the Chat/Markdown Editor from the real-time execution `Console`, letting you watch the AI compile macros and execute code live.
+2. **First-Boot Setup Wizard**: A sleek frosted-glass wizard dynamically sets up your proxy, API limits, and injects industry-specific Personas into your local `project_memory.json`.
+3. **Pipeless Process Isolation Sandbox**: The holy grail of agent architectures. AI-generated Python plugins now execute in a completely isolated, pipeless subprocess (`stdout.txt` physical drop) with a strict 30-second thermal timeout, eliminating UI freezing and ghost-process deadlocks on Windows/macOS.
+4. **Native Document Generation**: Equipped with a core `document_generator` plugin, Frog bypasses writing messy intermediary scripts and natively outputs rich `.pptx` and `.docx` directly to your desktop.
+
+---
+
+## 🚀 Core Capabilities
 
 - **True Autonomy (ReAct Engine):** Frog writes its own steps, evaluates tool outputs, and automatically retries with corrected logic if a tool fails (Self-Healing).
 - **Proactive Intelligence:** Features a background curiosity loop, daily persona generation based on chat history, and long-term generic goal tracking.
-- **Multi-Agent Spawning:** Can dispatch multiple parallel sub-agents to research or analyze things concurrently.
-- **Dynamic Plugin System:** Adding new skills is as easy as putting a `.py` and `.json` in the `plugins/` directory. Frog can even write new plugins for itself dynamically using the `plugin_generator`.
+- **Dynamic Skill Evolution (`plugin_generator`):** Adding new skills is natively supported. If Frog lacks a capability, it will use its `plugin_generator` to write a cross-platform Python script, compile it into a `manifest.json`, and permanently install it as a new "Macro Skill" in `generated_tools/`.
 - **System-level Integration:** Native Windows/macOS/Linux toast notifications (`notify_user`) and shell execution (`shell_executor`) built-in.
-- **Persistent Knowledge:** Built-in RAG via ChromaDB. Automatically reads, tags, and categorizes local documents.
+- **Secure File Manipulator:** Able to traverse directories, read logs (using `fs_expert`), and automatically format massive batches of data.
 
 ---
 
@@ -33,7 +41,7 @@ Built with a modern Electron frontend and a powerful Python FastApi backend, Fro
 
 - **OS:** Windows 10/11, macOS, Linux (Cross-platform)
 - **Node.js:** v18.0 or higher
-- **Python:** v3.10 or higher
+- **Python:** v3.10 or higher (Dependencies: `fastapi`, `uvicorn`, `python-pptx`, `python-docx`, `pypdf`, `duckduckgo-search`, etc.)
 - **LLM Account:** Any OpenAI-compatible API key (OpenAI, Anthropic, DeepSeek, local LM Studio, etc.) or Google Gemini API.
 
 ---
@@ -47,12 +55,7 @@ cd frog-core
 pip install -r requirements.txt
 ```
 
-Set your environment variables. Create a `.env` in `frog-core/` or `frog-shell/`:
-```env
-OPENAI_API_KEY=sk-your-key-here
-OPENAI_BASE_URL=https://api.openai.com/v1
-DEFAULT_MODEL=gpt-4o
-```
+*(Note: If you plan to use OCR capabilities on scanned PDFs, please ensure `tesseract` or `poppler` are installed natively in your OS PATH).*
 
 ### 2. Initialize Node.js Frontend
 Navigate to `frog-shell` and install npm modules:
@@ -66,41 +69,30 @@ You can start both the backend and frontend simultaneously using the provided st
 ```bash
 python start_frog.py
 ```
-*(Alternatively, you can manually run `uvicorn main:app` in frog-core and `npm start` in frog-shell).*
+*(Alternatively, you can manually run `uvicorn main:app --port 8000` in frog-core and `npm start` in frog-shell).*
 
 ---
 
-## 🔌 API Documentation (Core REST API)
+## 🔌 High-Performance Architecture
 
-Frog exposes its agent logic via a standard REST API, allowing you to integrate it into external applications (like Discord bots or CI/CD pipelines).
+Frog separates its cognitive reasoning (FastAPI Backend) from its display layer (Electron). 
+When the LLM generates a tool call, `tool_writer.py` catches it and provisions an isolated context memory block:
 
-### `POST /task/create`
-Creates a new autonomous task.
-**Payload:**
-```json
-{
-  "messages": [{"role": "user", "content": "Analyze my codebase and generate a report."}],
-  "model": "gpt-4o",
-  "webhook_url": "https://your-server.com/frog-webhook-callback" (Optional)
-}
-```
-**Response:** Returns a `task_id`.
-
-### Webhook Callbacks
-If `webhook_url` is provided, Frog will run asynchronously and POST to your URL when the task is `COMPLETED` or `FAILED`:
-```json
-{
-  "task_id": "c8f2-...",
-  "status": "completed",
-  "result": "The analysis is complete. Here are the findings: ..."
-}
+```mermaid
+graph TD;
+    User-->|REST / SSE stream|FastAPI;
+    FastAPI-->|JSON Prompt|LLM;
+    LLM-->|JSON Action|Orchestrator;
+    Orchestrator-->|Sandboxed Execution Subprocess|Subprocess_Sandbox;
+    Subprocess_Sandbox-->|Physical Disk Drop|stdout.txt;
+    stdout.txt-->|Error Traces & Results|Orchestrator;
 ```
 
 ---
 
 ## 🧩 External Plugin Specification
 
-Plugins allow Frog to interact with the real world. Frog dynamically loads all plugins from `frog-core/plugins/`.
+Plugins allow Frog to interact with the real world. Frog dynamically loads all built-in plugins from `frog-core/plugins/` and AI-generated skills from `frog-core/generated_tools/`.
 
 A plugin requires exactly 2 files:
 1. `manifest.json` (Describes the tool to the LLM)
@@ -140,11 +132,11 @@ def execute(params: dict, context: dict) -> dict:
 
 ## 🏭 Industry Templates
 Frog ships with sample JSON templates in `templates/` (e.g., `coder.json`, `researcher.json`). 
-You can load these to instantly reconfigure Frog's persona, initial goals, and default allowed plugins for specific specialized jobs!
+You can load these natively inside the Setup Wizard to instantly reconfigure Frog's persona, operational goals, and code-cleanliness habits for specific specialized jobs!
 
 ---
 
 ## ⚖️ License
 
 This project is open-source and released under the [MIT License](LICENSE). 
-You are free to use, modify, and distribute this software, as long as the original copyright and license notice are included.
+You are free to use, modify, and distribute this software, as long as the original copyright notice is provided.
