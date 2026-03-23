@@ -48,9 +48,11 @@ V2 introduces a complete **IDE-style vertical split UI**, a **Pipeless Subproces
 
 ## 🏃 Build & Run
 
-Frog AI is cross-platform, but setup commands differ slightly depending on your operating system. Please follow the instructions for your specific OS:
+Frog AI is cross-platform. Click the button below for your specific operating system to see the setup instructions:
 
-### 🪟 Windows
+<details>
+<summary>🪟 <strong>Windows</strong> (Click to expand)</summary>
+<br>
 
 **1. Initialize Python Backend**
 ```cmd
@@ -61,7 +63,7 @@ pip install -r requirements.txt
 
 **2. Initialize Node.js Frontend**
 ```cmd
-cd ../frog-shell
+cd ..\frog-shell
 npm install
 ```
 > **Troubleshooting**: If you are using **PowerShell** and encounter an Execution Policy error (`cannot be loaded because running scripts is disabled`), try running `npm.cmd install` instead, or run this command as Administrator first: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`.
@@ -71,10 +73,11 @@ npm install
 cd ..
 python start_frog.py
 ```
+</details>
 
----
-
-### 🍎 macOS
+<details>
+<summary>🍎 <strong>macOS</strong> (Click to expand)</summary>
+<br>
 
 **1. Initialize Python Backend**
 ```bash
@@ -94,10 +97,11 @@ npm install
 cd ..
 python3 start_frog.py
 ```
+</details>
 
----
-
-### 🐧 Linux (Ubuntu/Debian)
+<details>
+<summary>🐧 <strong>Linux (Ubuntu/Debian)</strong> (Click to expand)</summary>
+<br>
 
 **1. Initialize Python Backend**
 Make sure you have python3-venv and build-essential installed.
@@ -118,10 +122,12 @@ npm install
 cd ..
 python3 start_frog.py
 ```
+</details>
 
 ---
 
 *(Alternatively for all systems, you can manually run `uvicorn main:app --port 8000` in `frog-core` and `npm start` in `frog-shell` in two separate terminal windows).*
+
 
 ---
 
