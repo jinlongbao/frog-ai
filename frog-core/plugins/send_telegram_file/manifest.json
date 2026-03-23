@@ -1,7 +1,7 @@
 {
   "id": "send_telegram_file",
   "name": "Send File via Telegram",
-  "description": "Sends a local file (image, document, etc.) to a Telegram chat using the Bot API. Use this when the user asks you to send, share, or upload a file to their Telegram. Automatically detects images (jpg, png, gif, webp) and sends them as photos; other files are sent as documents.",
+  "description": "Sends a local file (image, document, etc.) to a Telegram chat using the Bot API. This is the PRIMARY tool for all Telegram transfers. Supports using '~' for home directories (e.g. '~/Desktop/pic.jpg'). Use this for ANY request to send files to the user's phone/Telegram.",
   "version": "1.0.0",
   "entry_point": "index.py",
   "parameters": {

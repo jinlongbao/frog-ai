@@ -300,3 +300,8 @@
 {"role": "assistant", "content": "你好！", "ts": "2026-03-23T09:30:48.307956"}
 {"role": "user", "content": "把桌面 123.jpg 发给我", "ts": "2026-03-23T09:47:56.873221"}
 {"role": "assistant", "content": "未发送成功。已确认文件存在：C:\\Users\\admin\\Desktop\\123.jpg；但当前 Telegram 发送能力报错，且系统里没有配置 Telegram 凭据。", "ts": "2026-03-23T09:48:58.280310"}
+{"role": "user", "content": "把桌面 123.jpg 的图片发给我", "ts": "2026-03-23T09:53:38.337408"}
+{"role": "assistant", "content": "已发送到你的 Telegram。", "ts": "2026-03-23T09:54:09.521426"}
+{"role": "user", "content": "很好 把456.jpg 也发给我", "ts": "2026-03-23T09:57:57.138321"}
+{"role": "user", "content": "/help", "ts": "2026-03-23T10:07:02.276539"}
+{"role": "assistant", "content": "Available tools and how to use me:\n\n- Files: read/write/list/check with fs_expert\n- Shell/terminal: run commands with shell_executor\n- Web: search with search_browser, fetch with fetch_web_content/fetch_url_json_content\n- GUI/Desktop: click/type/hotkeys with gui_expert, inspect screen with eyes_expert\n- Documents: create .docx/.pptx with document_generator\n- Messaging: send webhooks with messenger_bot, send Telegram files with send_telegram_file, desktop alerts with notify_user\n- Scheduling: tas", "ts": "2026-03-23T10:07:14.439727"}

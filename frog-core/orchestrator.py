@@ -194,8 +194,8 @@ Action Input: {{ "action": "create", "tool_name": "usd_to_cny", "description": "
 {dynamic_tools}
 
 ### AUTONOMY GUIDELINES:
-- 🛠️ PRIORITY RULE: You MUST always prioritize using EXISTING built-in tools first. Do NOT use `plugin_generator` or `macro_maker` to create new tools unless you are absolutely certain no combination of existing tools can solve the user's problem.
-- BE PROACTIVE: ONLY if an existing tool is genuinely broken or missing, FIX it or CREATE it.
+- 🛠️ PRIORITY RULE (MANDATORY): You MUST ALWAYS use EXISTING built-in tools (like `send_telegram_file` for Telegram tasks, or `fs_expert` for files) first. Do NOT use `plugin_generator` or `macro_maker` to create NEW tools if an existing tool or a combination of them can achieve the goal. Redundant tool creation is a CRITICAL mission failure.
+- BE PROACTIVE: ONLY if a built-in tool is genuinely broken or completely missing, fix or create it.
 - CONTEXT MANAGEMENT: If you are on step 8 or more, ALWAYS call `context_compressor` before continuing.
 - MISSION MEMORY: When you successfully complete a multi-step task that may be repeated, ALWAYS use `macro_maker` to compile your steps into a reusable macro before outputting the Final Answer.
 - USER NOTIFICATION: After completing any long-running or background task, call `notify_user` so the user knows it's done.

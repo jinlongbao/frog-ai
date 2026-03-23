@@ -1,5 +1,5 @@
 def execute(params, context):
-    prompt = params.get("prompt")
+    prompt = params.get("prompt") or params.get("question") or params.get("message", "Input requested")
     input_type = params.get("input_type", "text")
     
     # We raise a special exception that the main orchestrator will catch

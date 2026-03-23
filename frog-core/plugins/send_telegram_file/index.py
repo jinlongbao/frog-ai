@@ -17,10 +17,46 @@ def execute(params: dict, context: dict) -> dict:
     if not file_path:
         return {"status": "error", "message": "Missing required parameter: file_path"}
 
-    file_path = os.path.expanduser(file_path)
+    # --- START SMART PATH RESOLUTION ---
+    search_paths = []
+    
+    # 1. Try original path
+    search_paths.append(file_path)
+    
+    # 2. Try expanded home path
+    if file_path.startswith("~"):
+        search_paths.append(os.path.expanduser(file_path))
+        
+    # 3. If it's just a filename, look in common 'Hero' spots
+    if not os.path.dirname(file_path):
+        from pathlib import Path
+        # Built-in system paths
+        search_paths.append(str(Path.home() / "Desktop" / file_path))
+        search_paths.append(str(Path.home() / "Downloads" / file_path))
+        # Current workspace
+        search_paths.append(os.path.join(os.getcwd(), file_path))
+        # LOCALIZED / REDIRECTED checks (D:\桌面 etc)
+        for drive in ['C', 'D', 'E']:
+            for localized_name in ['桌面', 'Desktop']:
+                redirect_path = f"{drive}:\\{localized_name}\\{file_path}"
+                search_paths.append(redirect_path)
 
-    if not os.path.exists(file_path):
-        return {"status": "error", "message": f"File not found: {file_path}"}
+    # Find first existing path
+    final_path = None
+    for p in search_paths:
+        if os.path.exists(p):
+            final_path = p
+            break
+            
+    if not final_path:
+        return {
+            "status": "error", 
+            "message": f"File not found: {file_path}. I checked {len(search_paths)} potential locations including Desktop and Downloads.",
+            "searched_locations": search_paths[:5] # Show a few for debugging
+        }
+        
+    file_path = final_path
+    # --- END SMART PATH RESOLUTION ---
 
     # 判断文件类型
     ext = os.path.splitext(file_path)[1].lower()
