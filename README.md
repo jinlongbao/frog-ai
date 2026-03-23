@@ -62,7 +62,7 @@ cd frog-ai
 Frog AI is cross-platform. Click the button below for your specific operating system to see the setup instructions:
 
 <details>
-<summary>🪟 <strong>Windows</strong> (Click to expand)</summary>
+<summary><img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/windows11.svg" width="16" height="16" style="vertical-align: middle;"> <strong>Windows</strong> (Click to expand)</summary>
 <br>
 
 **1. Initialize Python Backend**
