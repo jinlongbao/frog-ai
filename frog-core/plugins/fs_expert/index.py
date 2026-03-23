@@ -11,6 +11,7 @@ def execute(params, context):
 
     try:
         # Normalize path
+        path = os.path.expanduser(path)
         abs_path = os.path.abspath(path)
 
         if action == "read":

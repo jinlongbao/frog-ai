@@ -48,28 +48,80 @@ V2 introduces a complete **IDE-style vertical split UI**, a **Pipeless Subproces
 
 ## 🏃 Build & Run
 
-### 1. Initialize Python Backend
-Navigate to `frog-core` and install dependencies:
-```bash
+Frog AI is cross-platform, but setup commands differ slightly depending on your operating system. Please follow the instructions for your specific OS:
+
+### 🪟 Windows
+
+**1. Initialize Python Backend**
+```cmd
 cd frog-core
 pip install -r requirements.txt
 ```
-
 *(Note: If you plan to use OCR capabilities on scanned PDFs, please ensure `tesseract` or `poppler` are installed natively in your OS PATH).*
 
-### 2. Initialize Node.js Frontend
-Navigate to `frog-shell` and install npm modules:
+**2. Initialize Node.js Frontend**
+```cmd
+cd ../frog-shell
+npm install
+```
+> **Troubleshooting**: If you are using **PowerShell** and encounter an Execution Policy error (`cannot be loaded because running scripts is disabled`), try running `npm.cmd install` instead, or run this command as Administrator first: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`.
+
+**3. Start the Application**
+```cmd
+cd ..
+python start_frog.py
+```
+
+---
+
+### 🍎 macOS
+
+**1. Initialize Python Backend**
+```bash
+cd frog-core
+pip3 install -r requirements.txt
+```
+*(Note: For OCR on macOS, install poppler and tesseract via Homebrew: `brew install poppler tesseract`).*
+
+**2. Initialize Node.js Frontend**
 ```bash
 cd ../frog-shell
 npm install
 ```
 
-### 3. Start the Application
-You can start both the backend and frontend simultaneously using the provided startup script in the root directory:
+**3. Start the Application**
 ```bash
-python start_frog.py
+cd ..
+python3 start_frog.py
 ```
-*(Alternatively, you can manually run `uvicorn main:app --port 8000` in frog-core and `npm start` in frog-shell).*
+
+---
+
+### 🐧 Linux (Ubuntu/Debian)
+
+**1. Initialize Python Backend**
+Make sure you have python3-venv and build-essential installed.
+```bash
+sudo apt update && sudo apt install python3-pip poppler-utils tesseract-ocr
+cd frog-core
+pip3 install -r requirements.txt
+```
+
+**2. Initialize Node.js Frontend**
+```bash
+cd ../frog-shell
+npm install
+```
+
+**3. Start the Application**
+```bash
+cd ..
+python3 start_frog.py
+```
+
+---
+
+*(Alternatively for all systems, you can manually run `uvicorn main:app --port 8000` in `frog-core` and `npm start` in `frog-shell` in two separate terminal windows).*
 
 ---
 

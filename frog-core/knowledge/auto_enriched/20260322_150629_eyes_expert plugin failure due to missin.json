@@ -1,0 +1,12 @@
+{
+  "title": "eyes_expert plugin failure due to missing API key",
+  "content": "If the `eyes_expert` screenshot-vision plugin reports `Missing OPENAI_API_KEY in environment variables`, visual screen capture and recognition will not execute successfully. In that state, failures to detect new messages are caused by plugin configuration, not by polling logic. Any downstream automation that depends on visual detection, such as auto-reply actions, will also fail.",
+  "tags": [
+    "plugin-error",
+    "environment-configuration",
+    "automation",
+    "auto_enriched"
+  ],
+  "source": "auto_enrichment",
+  "created_at": "2026-03-22T15:06:29.381305"
+}

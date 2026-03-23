@@ -1,0 +1,39 @@
+{
+  "id": "gui_expert",
+  "name": "GUI Automation Expert",
+  "description": "Control the user's mouse and keyboard to interact with desktop applications directly (RPA). ALWAYS use 'sleep' between opening apps and typing to account for loading times. Use 'type' to safely input text (it automatically handles Chinese characters via clipboard).",
+  "version": "1.0.0",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["click", "double_click", "mouse_move", "type", "press", "hotkey", "sleep"],
+        "description": "The physical action to perform."
+      },
+      "x": {
+        "type": "integer",
+        "description": "Absolute X coordinate on screen (for clicks/moves)."
+      },
+      "y": {
+        "type": "integer",
+        "description": "Absolute Y coordinate on screen (for clicks/moves)."
+      },
+      "text": {
+        "type": "string",
+        "description": "The exact string to type (required for 'type' action)."
+      },
+      "keys": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of keys. For 'press', pressed sequentially (e.g. ['win', 'enter']). For 'hotkey', pressed together (e.g. ['ctrl', 'c']). Valid keys include: 'enter', 'tab', 'esc', 'up', 'down', 'win', 'ctrl', 'alt', 'shift', etc."
+      },
+      "duration": {
+        "type": "number",
+        "description": "Wait time in seconds (required for 'sleep' action). Always sleep 1-2 seconds after opening an app!"
+      }
+    },
+    "required": ["action"]
+  }
+}

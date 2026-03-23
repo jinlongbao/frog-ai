@@ -74,6 +74,7 @@ async def curiosity_loop():
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(curiosity_loop())
+    asyncio.create_task(telegram_polling_worker())
 
 def create_safe_openai_client(api_key: str, base_url: str = None):
     """
@@ -120,6 +121,144 @@ if not os.path.exists(PLUGINS_DIR):
     os.makedirs(PLUGINS_DIR)
 if not os.path.exists(GENERATED_TOOLS_DIR):
     os.makedirs(GENERATED_TOOLS_DIR)
+
+BOT_CONFIG_FILE = os.path.join(KNOWLEDGE_DIR, "bot_config.json")
+LLM_CONFIG_FILE = os.path.join(KNOWLEDGE_DIR, "llm_config.json")
+
+def load_bot_config():
+    if os.path.exists(BOT_CONFIG_FILE):
+        try:
+            with open(BOT_CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_bot_config(config):
+    with open(BOT_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=4)
+
+def load_llm_config():
+    """从持久化文件读取 LLM 配置（前端同步过来的）"""
+    if os.path.exists(LLM_CONFIG_FILE):
+        try:
+            with open(LLM_CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_llm_config(config):
+    with open(LLM_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=4)
+
+async def telegram_polling_worker():
+    """后台轮询 Telegram 指令"""
+    print("[Telegram Worker] Background worker started.")
+    last_update_id = 0
+    while True:
+        await asyncio.sleep(5)
+        config = load_bot_config()
+        token = config.get("telegram_token")
+        authorized_chat_id = config.get("telegram_chat_id")
+        if not token or not authorized_chat_id: continue
+        try:
+            url = f"https://api.telegram.org/bot{token}/getUpdates"
+            params = {"offset": last_update_id + 1, "timeout": 20}
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(url, params=params)
+                if response.status_code == 200:
+                    updates = response.json().get("result", [])
+                    for update in updates:
+                        last_update_id = update["update_id"]
+                        message = update.get("message")
+                        if not message: continue
+                        chat_id = str(message.get("chat", {}).get("id"))
+                        text = message.get("text")
+                        if chat_id == str(authorized_chat_id) and text:
+                            print(f"[Telegram Worker] Received: {text}")
+                            asyncio.create_task(process_remote_command(text, token, chat_id))
+        except Exception: await asyncio.sleep(10)
+
+async def process_remote_command(prompt: str, token: str, chat_id: str):
+    """执行远程指令并回复结果"""
+    print(f"[Remote Control] Executing: {prompt}")
+    await send_typing_action(token, chat_id)  # 显示"正在输入..."状态，不发消息
+    try:
+        load_dotenv()
+        
+        # 优先读取环境变量，其次读取前端同步过来的 llm_config.json
+        api_key = os.getenv("OPENAI_API_KEY", "")
+        base_url = os.getenv("OPENAI_BASE_URL", "")
+        model = os.getenv("DEFAULT_MODEL", "")
+        provider = os.getenv("LLM_PROVIDER", "")
+        
+        if not api_key:
+            # 读取前端界面保存的 LLM 配置
+            saved_llm = load_llm_config()
+            api_key = saved_llm.get("key", "")
+            base_url = saved_llm.get("apiBase", base_url)
+            model = saved_llm.get("model", "gpt-4o")
+            provider = saved_llm.get("provider", "openai")
+        
+        if not api_key:
+            await send_telegram_reply(token, chat_id, "❌ 未找到 LLM API Key。\n请在设置界面配置好大模型 API Key 并点击「保存配置」。")
+            return
+
+        payload = {
+            "messages": [{"role": "user", "content": prompt}],
+            "api_key": api_key,
+            "model": model,
+            "provider": provider,
+            "base_url": base_url,  # 确保是字符串，不是 None
+            "telegram_token": token,
+            "telegram_chat_id": chat_id
+        }
+        async with httpx.AsyncClient(timeout=600) as client:
+            res = await client.post("http://127.0.0.1:8000/task/create", json=payload)
+            if res.status_code != 200:
+                await send_telegram_reply(token, chat_id, f"❌ 任务创建失败 (HTTP {res.status_code}): {res.text[:200]}")
+                return
+            task_id = res.json().get("task_id")
+            if not task_id:
+                await send_telegram_reply(token, chat_id, "❌ 任务创建失败：未返回 task_id。")
+                return
+            status = "PENDING"
+            max_steps = 20
+            step_count = 0
+            while status not in ["COMPLETED", "FAILED"] and step_count < max_steps:
+                step_count += 1
+                # Telegram typing 状态约 5 秒过期，每 4 步刷新一次
+                if step_count % 4 == 1:
+                    await send_typing_action(token, chat_id)
+                step_res = await client.post(f"http://127.0.0.1:8000/task/{task_id}/step")
+                task_data = step_res.json()
+                status = task_data.get("status")
+                if status == "COMPLETED":
+                    final_answer = task_data.get("final_answer") or "任务已完成。"
+                    # Telegram 消息有 4096 字符限制
+                    if len(final_answer) > 3800:
+                        final_answer = final_answer[:3800] + "...(内容已截断)"
+                    await send_telegram_reply(token, chat_id, f"✅ 任务完成！\n\n{final_answer}")
+                elif status == "FAILED":
+                    await send_telegram_reply(token, chat_id, f"❌ 任务失败: {task_data.get('error')}")
+    except Exception as e:
+        await send_telegram_reply(token, chat_id, f"❌ 系统错误: {str(e)}")
+
+async def send_telegram_reply(token: str, chat_id: str, text: str):
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            await client.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": text})
+    except Exception as e:
+        print(f"[Telegram Worker] Error sending reply: {e}")
+
+async def send_typing_action(token: str, chat_id: str):
+    """显示 Telegram '正在输入...' 状态（持续约 5 秒）"""
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            await client.post(f"https://api.telegram.org/bot{token}/sendChatAction", json={"chat_id": chat_id, "action": "typing"})
+    except Exception as e:
+        print(f"[Telegram Worker] Error sending typing action: {e}")
 
 class SearchQuery(BaseModel):
     query: str
@@ -627,6 +766,9 @@ class CreateTaskRequest(BaseModel):
     reasoning_effort: str = "medium"
     provider: str = "openai"
     webhook_url: str | None = None
+    wechat_work_key: str | None = None
+    telegram_token: str | None = None
+    telegram_chat_id: str | None = None
 
 @app.post("/task/create")
 async def create_task(request: CreateTaskRequest):
@@ -637,7 +779,10 @@ async def create_task(request: CreateTaskRequest):
             "model": request.model,
             "reasoning_effort": request.reasoning_effort,
             "provider": request.provider,
-            "webhook_url": request.webhook_url
+            "webhook_url": request.webhook_url,
+            "wechat_work_key": request.wechat_work_key,
+            "telegram_token": request.telegram_token,
+            "telegram_chat_id": request.telegram_chat_id
         }
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
         
@@ -884,29 +1029,12 @@ async def execute_task_step(task_id: str):
                                     except Exception:
                                         continue
                             results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
-                            observation = {
-                                "type": "observation",
-                                "tool": "knowledge_manager",
-                                "content": results[:top_k]
-                            }
                         else:
                             observation = {
                                 "type": "observation",
                                 "tool": "knowledge_manager",
                                 "content": "Unsupported action. Use save or retrieve."
                             }
-
-                    elif tool_name == "execute_tool":
-                        result = tool_writer.execute_tool(
-                            tool_id=tool_params.get("tool_id", ""),
-                            params=tool_params.get("params", {}),
-                            context=tool_params.get("context", {})
-                        )
-                        observation = {
-                            "type": "observation",
-                            "tool": "execute_tool",
-                            "content": result
-                        }
 
                     elif tool_name == "list_tools":
                         result = tool_writer.list_tools()
@@ -923,13 +1051,30 @@ async def execute_task_step(task_id: str):
                             "content": "Waiting for human input"
                         }
 
-                    else:
-                        # GENERIC FALLBACK: Try executing as a built-in or dynamic tool
-                        # This avoids having to hardcode every new plugin in main.py
                         result = tool_writer.execute_tool(
                             tool_id=tool_name,
                             params=tool_params,
-                            context={"task_id": task_id}
+                            context={
+                                "task_id": task_id,
+                                "wechat_work_key": task.config.get("wechat_work_key"),
+                                "telegram_token": task.config.get("telegram_token"),
+                                "telegram_chat_id": task.config.get("telegram_chat_id")
+                            }
+                        )
+                        observation = {
+                            "type": "observation",
+                            "tool": tool_name,
+                            "content": result
+                        }
+                    else:
+                        result = tool_writer.execute_tool(
+                            tool_id=tool_name,
+                            params=tool_params,
+                            context={
+                                "wechat_work_key": task.config.get("wechat_work_key"),
+                                "telegram_token": task.config.get("telegram_token"),
+                                "telegram_chat_id": task.config.get("telegram_chat_id")
+                            }
                         )
                         observation = {
                             "type": "observation",
@@ -1132,6 +1277,59 @@ async def execute_with_retry(request: ExecuteWithRetryRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Execute with retry failed: {str(e)}")
+
+@app.get("/bot/telegram/bind")
+async def bind_telegram_bot(token: str):
+    """
+    一键绑定：监听 Telegram 机器人的更新，自动获取用户的 Chat ID。
+    """
+    if not token:
+        raise HTTPException(status_code=400, detail="Missing Bot Token")
+    
+    bind_url = f"https://api.telegram.org/bot{token}/getUpdates"
+    start_time = datetime.now()
+    timeout = 60  # 60 秒超时
+    
+    print(f"[Telegram Bind] Start listening for bot: {token[:10]}...")
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            while (datetime.now() - start_time).total_seconds() < timeout:
+                response = await client.get(bind_url)
+                if response.status_code == 200:
+                    updates = response.json().get("result", [])
+                    if updates:
+                        # 获取最新的消息
+                        last_msg = updates[-1].get("message", {})
+                        chat_id = last_msg.get("chat", {}).get("id")
+                        username = last_msg.get("from", {}).get("username", "Unknown")
+                        
+                        if chat_id:
+                            print(f"[Telegram Bind] Successfully captured Chat ID: {chat_id} from @{username}")
+                            return {
+                                "status": "success",
+                                "chat_id": str(chat_id),
+                                "username": username
+                            }
+                
+                await asyncio.sleep(3) # 每 3 秒轮询一次
+                
+    except Exception as e:
+        print(f"[Telegram Bind] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    raise HTTPException(status_code=408, detail="Timeout: No message received in 60s. Please send a message to your bot.")
+
+@app.post("/settings/bots")
+async def update_bot_settings(config: dict = Body(...)):
+    save_bot_config(config)
+    return {"status": "success", "message": "Bot configuration saved."}
+
+@app.post("/settings/llm")
+async def update_llm_settings(config: dict = Body(...)):
+    """持久化前端 LLM 配置，供 Telegram 远控使用"""
+    save_llm_config(config)
+    return {"status": "success", "message": "LLM configuration saved."}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

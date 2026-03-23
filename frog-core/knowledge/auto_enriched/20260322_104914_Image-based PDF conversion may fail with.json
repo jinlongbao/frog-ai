@@ -1,0 +1,12 @@
+{
+  "title": "Image-based PDF conversion may fail without OCR dependencies",
+  "content": "If PDF-to-Word conversion produces placeholder text like 'no editable text extracted,' the PDFs may be scanned/image-based rather than text PDFs. A failed OCR test with an error such as `No module named 'pytesseract'` indicates the environment lacks a required OCR dependency. In such cases, installing `pytesseract` and the Tesseract OCR engine, then rerunning OCR, is a direct fix. Similar output file sizes across many generated DOCX files can also suggest the same template placeholder was batch-written instead of real extracted text.",
+  "tags": [
+    "ocr",
+    "pdf-conversion",
+    "tesseract",
+    "auto_enriched"
+  ],
+  "source": "auto_enrichment",
+  "created_at": "2026-03-22T10:49:14.866422"
+}

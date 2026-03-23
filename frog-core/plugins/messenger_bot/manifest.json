@@ -1,0 +1,39 @@
+{
+  "id": "messenger_bot",
+  "name": "Universal Messenger Bot API",
+  "description": "Sends messages to various chat services (WeChat Work, Discord, Slack) using official Webhooks or Bot APIs. This is high-reliability, silent communication that works directly via HTTP and does not require GUI interaction.",
+  "version": "1.0.0",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "description": "What to do? (e.g., 'send_webhook')",
+        "enum": ["send_webhook"]
+      },
+      "webhook_url": {
+        "type": "string",
+        "description": "The target API/Webhook URL provided by the messenger service."
+      },
+      "message": {
+        "type": "string",
+        "description": "The text message content to send."
+      },
+      "bot_type": {
+        "type": "string",
+        "description": "Type of bot to auto-format the JSON payload.",
+        "enum": ["generic", "wechat_work", "discord", "feishu", "dingtalk", "telegram"]
+      },
+      "chat_id": {
+        "type": "string",
+        "description": "Required for Telegram: The unique identifier for the target chat or username of the target channel (in the format @channelusername)."
+      },
+      "custom_payload": {
+        "type": "object",
+        "description": "Optional: If provided, this will be the exact JSON body sent, ignoring 'message' and 'bot_type'."
+      }
+    },
+    "required": ["action", "webhook_url"]
+  }
+}

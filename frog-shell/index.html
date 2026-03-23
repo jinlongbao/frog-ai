@@ -349,7 +349,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-y: auto;
         }
 
         /* Compact Tool Card Component */
@@ -539,6 +539,11 @@
             color: white;
             transition: all 0.2s;
             outline: none;
+        }
+
+        select option {
+            background: var(--bg-deep);
+            color: white;
         }
 
         input:focus, select:focus {
@@ -905,6 +910,59 @@
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 32px 0;">
 
                 <div class="form-section">
+                    <label class="form-label">Messenger Bot Configuration</label>
+                    <p style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 20px;">Persistent API keys for background automation bots.</p>
+                    
+                    <div class="form-row" style="margin-bottom: 24px;">
+                        <div class="input-group">
+                            <label>Target Platform</label>
+                            <select id="bot-platform-select" style="border-color: var(--accent); background: rgba(56, 189, 248, 0.05);">
+                                <option value="wechat">WeChat Work (企业微信)</option>
+                                <option value="telegram">Telegram</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- WeChat Section -->
+                    <div id="bot-config-wechat" class="bot-platform-config">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label>WeChat Work Webhook Key</label>
+                                <input type="password" id="bot-wechat-key" placeholder="693a91f6-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telegram Section -->
+                    <div id="bot-config-telegram" class="bot-platform-config" style="display: none;">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label>Telegram Bot Token</label>
+                                <input type="password" id="bot-tg-token" placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ">
+                            </div>
+                            <div class="input-group">
+                                <label>Telegram Chat ID</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="bot-tg-chatid" placeholder="-100123456789" style="flex: 1;">
+                                    <button id="tg-bind-btn" class="btn-action" title="点击后给机器人发消息，自动获取 ID" style="width: auto; padding: 0 12px; margin-top: 0; height: 42px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent);">
+                                        <i class="fas fa-satellite-dish"></i> 自动获取
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 24px;">
+                        <button id="save-bots" class="btn-action" style="background: var(--bg-slate); border: 1px solid var(--border); color: white;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            <span>Save Bot Keys</span>
+                        </button>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 32px 0;">
+
+                <div class="form-section">
                     <label class="form-label" data-i18n="brain_endpoint">Connection Status</label>
                     <div class="connection-card">
                         <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -1149,6 +1207,22 @@
         const llmKey = document.getElementById('llm-key');
         const llmReasoning = document.getElementById('llm-reasoning');
         const saveLlmBtn = document.getElementById('save-llm');
+        const saveBotsBtn = document.getElementById('save-bots');
+        const botPlatformSelect = document.getElementById('bot-platform-select');
+        const botWechatKey = document.getElementById('bot-wechat-key');
+        const botTgToken = document.getElementById('bot-tg-token');
+        const botTgChatId = document.getElementById('bot-tg-chatid');
+
+        const botConfigWechat = document.getElementById('bot-config-wechat');
+        const botConfigTelegram = document.getElementById('bot-config-telegram');
+
+        if (botPlatformSelect) {
+            botPlatformSelect.onchange = () => {
+                const platform = botPlatformSelect.value;
+                botConfigWechat.style.display = platform === 'wechat' ? 'block' : 'none';
+                botConfigTelegram.style.display = platform === 'telegram' ? 'block' : 'none';
+            };
+        }
 
         function loadLlmConfig() {
             const config = JSON.parse(localStorage.getItem('frog_llm_config') || '{}');
@@ -1157,20 +1231,114 @@
             if (config.apiBase) llmBase.value = config.apiBase;
             if (config.key) llmKey.value = config.key;
             if (config.reasoning) llmReasoning.value = config.reasoning;
+            
+            // Load bot keys
+            if (config.wechat_work_key) botWechatKey.value = config.wechat_work_key;
+            if (config.telegram_token) botTgToken.value = config.telegram_token;
+            if (config.telegram_chat_id) botTgChatId.value = config.telegram_chat_id;
+            
+            // Initial platform view
+            if (config.last_bot_platform) {
+                botPlatformSelect.value = config.last_bot_platform;
+                botPlatformSelect.onchange();
+            }
         }
 
-        saveLlmBtn.onclick = () => {
+        saveLlmBtn.onclick = async () => {
             const t = translations[currentLang];
-            const config = {
-                provider: llmProvider.value,
-                model: llmModel.value,
-                apiBase: llmBase.value,
-                key: llmKey.value,
-                reasoning: llmReasoning.value
-            };
+            const config = JSON.parse(localStorage.getItem('frog_llm_config') || '{}');
+            config.provider = llmProvider.value;
+            config.model = llmModel.value;
+            config.apiBase = llmBase.value;
+            config.key = llmKey.value;
+            config.reasoning = llmReasoning.value;
+            
             localStorage.setItem('frog_llm_config', JSON.stringify(config));
+
+            // 同步至后端，供 Telegram 远控使用
+            try {
+                await axios.post(`${API_BASE_URL}/settings/llm`, {
+                    provider: llmProvider.value,
+                    model: llmModel.value,
+                    apiBase: llmBase.value,
+                    key: llmKey.value
+                });
+            } catch (e) {
+                console.warn("Failed to sync LLM config to backend:", e);
+            }
+            
             alert(t.save_success);
         };
+
+        if (saveBotsBtn) {
+            saveBotsBtn.onclick = async () => {
+                const t = translations[currentLang];
+                const config = JSON.parse(localStorage.getItem('frog_llm_config') || '{}');
+                config.wechat_work_key = botWechatKey.value;
+                config.telegram_token = botTgToken.value;
+                config.telegram_chat_id = botTgChatId.value;
+                config.last_bot_platform = botPlatformSelect.value;
+                
+                localStorage.setItem('frog_llm_config', JSON.stringify(config));
+                
+                // 同步至后端以供后台监听器使用
+                try {
+                    await axios.post(`${API_BASE_URL}/settings/bots`, {
+                        wechat_work_key: botWechatKey.value,
+                        telegram_token: botTgToken.value,
+                        telegram_chat_id: botTgChatId.value
+                    });
+                } catch (e) {
+                    console.error("Failed to sync bot settings to backend:", e);
+                }
+
+                alert(t.save_success);
+            };
+        }
+
+        // Telegram 一键绑定逻辑
+        const tgBindBtn = document.getElementById('tg-bind-btn');
+        if (tgBindBtn) {
+            tgBindBtn.onclick = async () => {
+                const token = botTgToken.value.trim();
+                if (!token) {
+                    alert(currentLang === 'zh' ? "请先填写 Telegram Bot Token！" : "Please fill in the Telegram Bot Token first!");
+                    return;
+                }
+
+                const originalText = tgBindBtn.innerHTML;
+                tgBindBtn.disabled = true;
+                tgBindBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 监听中...';
+                
+                try {
+                    // 显示临时提示
+                    const statusInfo = document.createElement('div');
+                    statusInfo.style.cssText = "position: fixed; top: 20px; right: 20px; background: var(--accent); color: #0f172a; padding: 15px 25px; border-radius: 8px; z-index: 10001; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
+                    statusInfo.innerText = currentLang === 'zh' ? "请立即在手机上给机器人发送任意消息..." : "Please send any message to your bot now...";
+                    document.body.appendChild(statusInfo);
+
+                    const response = await axios.get(`${API_BASE_URL}/bot/telegram/bind?token=${token}`);
+                    
+                    document.body.removeChild(statusInfo);
+
+                    if (response.data.status === "success") {
+                        botTgChatId.value = response.data.chat_id;
+                        alert(currentLang === 'zh' ? 
+                            `✅ 绑定成功！\n识别到用户: @${response.data.username}\nChat ID 已填充，请记得保存。` : 
+                            `✅ Success!\nDetected user: @${response.data.username}\nChat ID filled. Please save.`);
+                    }
+                } catch (error) {
+                    console.error("Binding failed:", error);
+                    const msg = error.response?.data?.detail || "Timeout or failed. Please check your token and try again.";
+                    alert(msg);
+                    const existingInfo = document.querySelector('div[style*="z-index: 10001"]');
+                    if (existingInfo) document.body.removeChild(existingInfo);
+                } finally {
+                    tgBindBtn.disabled = false;
+                    tgBindBtn.innerHTML = originalText;
+                }
+            };
+        }
 
         document.getElementById('lang-en').onclick = () => {
             currentLang = 'en';
@@ -1414,7 +1582,10 @@
                     base_url: config.apiBase || '',
                     model: config.model || 'gpt-3.5-turbo',
                     reasoning_effort: config.reasoning || 'medium',
-                    provider: config.provider || 'openai'
+                    provider: config.provider || 'openai',
+                    wechat_work_key: config.wechat_work_key || null,
+                    telegram_token: config.telegram_token || null,
+                    telegram_chat_id: config.telegram_chat_id || null
                 });
                 
                 currentTaskId = createTaskRes.data.task_id;

@@ -1,0 +1,12 @@
+{
+  "title": "Visual WeChat auto-reply macro workflow",
+  "content": "A reusable automation pattern is to combine a vision plugin and GUI control to monitor WeChat for a specific contact's new messages, then automatically reply. The described flow uses visual detection to identify whether contact '金鑫伟' has sent a new message and to locate the center of the chat input box, then performs click, type, and Enter actions to send a fixed reply. It also notes using a background task scheduler to run the check repeatedly without blocking, though the example changed the requested 5-second interval to 15 seconds.",
+  "tags": [
+    "automation",
+    "gui",
+    "computer-vision",
+    "auto_enriched"
+  ],
+  "source": "auto_enrichment",
+  "created_at": "2026-03-22T15:27:44.587955"
+}

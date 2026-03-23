@@ -1,0 +1,17 @@
+{
+  "id": "eyes_expert",
+  "name": "Screen Vision Expert",
+  "description": "Takes a physical screenshot of the user's desktop to literally 'see' the screen. Evaluates the screenshot using the underlying Vision Language Model (LLM) to answer questions. Use this plugin whenever you need to 'read' the screen, find coordinate targets, or verify if a GUI action succeeded.",
+  "version": "1.0.0",
+  "entry_point": "index.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "question": {
+        "type": "string",
+        "description": "What you want the Vision LLM to answer after looking at the screen? Be highly specific. (e.g. 'Extract the exact text of the last chat message in the green box', or 'Give me the approximate X,Y coordinates of the Login button')."
+      }
+    },
+    "required": ["question"]
+  }
+}

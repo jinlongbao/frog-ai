@@ -1,0 +1,12 @@
+{
+  "title": "项目推广素材包生成流程可沉淀为宏技能",
+  "content": "当营销脚本检查工具不可用或报错时，可以改用备用流程生成项目推广素材包，并将该流程沉淀为可复用宏技能。推广素材可基于项目 README 简介和最近 5 条 Git 提交摘要生成，常见产物包括营销文档和账号注册清单。",
+  "tags": [
+    "automation",
+    "marketing",
+    "workflow",
+    "auto_enriched"
+  ],
+  "source": "auto_enrichment",
+  "created_at": "2026-03-22T13:38:56.944887"
+}

@@ -1,0 +1,12 @@
+{
+  "title": "Use scheduled atomic checks instead of illegal infinite loops for GUI auto-reply tasks",
+  "content": "For GUI automation tasks that must monitor the screen continuously, replace an in-process infinite loop with a scheduler-driven atomic action that runs once per invocation. A reusable pattern is: perform one screenshot-based check, detect whether a target contact has sent a new message, send a predefined typed reply if matched, then exit; have a task scheduler trigger this action periodically (for example, every 15 seconds) with immediate start and indefinite repetition. This avoids blocking execution and is more robust than relying on a sandboxed dead loop.",
+  "tags": [
+    "automation",
+    "task-scheduling",
+    "gui-agent",
+    "auto_enriched"
+  ],
+  "source": "auto_enrichment",
+  "created_at": "2026-03-22T15:22:03.994538"
+}

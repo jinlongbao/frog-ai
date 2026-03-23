@@ -1,0 +1,1 @@
+平台账号注册建议清单\n\n高优先级：\n1. GitHub\n2. Reddit\n3. Hacker News\n4. X/Twitter\n5. 掘金\n6. Dev.to\n\n第二梯队：\n7. Medium\n8. CSDN\n9. 博客园\n10. 少数派\n\n注册时建议统一信息：\n- 品牌名：Frog AI\n- 一句话简介：Highly Autonomous Personal AI Agent\n- 头像：青蛙 Logo / 极简 AI 图标\n- Banner：Plan / Execute / Remember / Self-Heal\n
