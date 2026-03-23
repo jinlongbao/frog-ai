@@ -16,6 +16,9 @@ Frog AI is a deeply autonomous, cross-platform personal AI agent. It acts as a *
 
 V2 introduces a complete **IDE-style vertical split UI**, a **Pipeless Subprocess Sandbox**, and **Autonomous Tool Generation**, bridging the gap between a developer API and a consumer-ready AI Operating System.
 
+📚 **Full Documentation / 完整官方文档**: 
+Please see the [English Wiki](docs/WIKI_EN.md) | 查看 [中文维基指南](docs/WIKI_ZH.md) for detailed architecture, plugin developer specifications, and expert tool macros.
+
 ---
 
 ## ✨ What's New in V2?
