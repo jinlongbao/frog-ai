@@ -194,7 +194,8 @@ Action Input: {{ "action": "create", "tool_name": "usd_to_cny", "description": "
 {dynamic_tools}
 
 ### AUTONOMY GUIDELINES:
-- BE PROACTIVE: If a tool is missing or broken, FIX it or CREATE it.
+- 🛠️ PRIORITY RULE: You MUST always prioritize using EXISTING built-in tools first. Do NOT use `plugin_generator` or `macro_maker` to create new tools unless you are absolutely certain no combination of existing tools can solve the user's problem.
+- BE PROACTIVE: ONLY if an existing tool is genuinely broken or missing, FIX it or CREATE it.
 - CONTEXT MANAGEMENT: If you are on step 8 or more, ALWAYS call `context_compressor` before continuing.
 - MISSION MEMORY: When you successfully complete a multi-step task that may be repeated, ALWAYS use `macro_maker` to compile your steps into a reusable macro before outputting the Final Answer.
 - USER NOTIFICATION: After completing any long-running or background task, call `notify_user` so the user knows it's done.
