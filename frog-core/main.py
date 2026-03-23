@@ -223,27 +223,59 @@ async def process_remote_command(prompt: str, token: str, chat_id: str):
             if not task_id:
                 await send_telegram_reply(token, chat_id, "❌ 任务创建失败：未返回 task_id。")
                 return
+            await send_telegram_reply(token, chat_id, "🔍 收到指令，正在处理中...")
+            
             status = "PENDING"
             max_steps = 20
             step_count = 0
-            while status not in ["COMPLETED", "FAILED"] and step_count < max_steps:
+            
+            # 记录已发送给用户的步骤，避免重复提醒
+            last_notified_step = 0
+            
+            while status not in ["COMPLETED", "FAILED", "WAITING_HUMAN_INPUT"] and step_count < max_steps:
                 step_count += 1
-                # Telegram typing 状态约 5 秒过期，每 4 步刷新一次
-                if step_count % 4 == 1:
-                    await send_typing_action(token, chat_id)
+                # Telegram typing 状态约 5 秒过期
+                await send_typing_action(token, chat_id)
+                
                 step_res = await client.post(f"http://127.0.0.1:8000/task/{task_id}/step")
                 task_data = step_res.json()
                 status = task_data.get("status")
+                steps = task_data.get("steps", [])
+                
+                # 发送中间状态提醒
+                if len(steps) > last_notified_step:
+                    latest_step = steps[-1]
+                    parsed = latest_step.get("parsed")
+                    if parsed and parsed.get("type") == "action":
+                        action_name = parsed.get("action")
+                        thought = parsed.get("thought", "")
+                        # 简短提醒用户 AI 在做什么
+                        display_thought = (thought[:100] + "...") if len(thought) > 100 else thought
+                        if action_name:
+                            await send_telegram_reply(token, chat_id, f"💡 {display_thought}\n🛠️ 正在调用: `{action_name}`")
+                        else:
+                            await send_telegram_reply(token, chat_id, f"🤔 {display_thought}")
+                    last_notified_step = len(steps)
+
                 if status == "COMPLETED":
-                    final_answer = task_data.get("final_answer") or "任务已完成。"
-                    # Telegram 消息有 4096 字符限制
+                    final_answer = task_data.get("final_answer") or "✅ 任务已完成。"
                     if len(final_answer) > 3800:
                         final_answer = final_answer[:3800] + "...(内容已截断)"
                     await send_telegram_reply(token, chat_id, final_answer)
+                elif status == "WAITING_HUMAN_INPUT":
+                    prompt = task_data.get("human_input_prompt") or "🙋‍♂️ 需要您的确认或输入以继续。"
+                    await send_telegram_reply(token, chat_id, f"⚠️ {prompt}")
+                    break
                 elif status == "FAILED":
-                    await send_telegram_reply(token, chat_id, f"❌ 任务失败: {task_data.get('error')}")
+                    await send_telegram_reply(token, chat_id, f"❌ 任务执行出错: {task_data.get('error')}")
+            
+            if step_count >= max_steps and status not in ["COMPLETED", "FAILED", "WAITING_HUMAN_INPUT"]:
+                 await send_telegram_reply(token, chat_id, "⏳ 任务执行步数过多，已强制停止。请检查任务复杂度或尝试拆分指令。")
+
     except Exception as e:
-        await send_telegram_reply(token, chat_id, f"❌ 系统错误: {str(e)}")
+        import traceback
+        print(f"[Telegram Worker] Error in process_remote_command: {traceback.format_exc()}")
+        await send_telegram_reply(token, chat_id, f"❌ 系统执行出错: {str(e)}")
 
 async def send_telegram_reply(token: str, chat_id: str, text: str):
     try:
