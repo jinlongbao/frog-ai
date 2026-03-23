@@ -46,6 +46,17 @@ V2 introduces a complete **IDE-style vertical split UI**, a **Pipeless Subproces
 
 ---
 
+## 📦 Installation
+
+To get started, clone the repository to your local machine:
+```bash
+git clone https://github.com/jinlongbao/frog-ai.git
+cd frog-ai
+```
+
+---
+
+
 ## 🏃 Build & Run
 
 Frog AI is cross-platform. Click the button below for your specific operating system to see the setup instructions:
