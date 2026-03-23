@@ -239,7 +239,7 @@ async def process_remote_command(prompt: str, token: str, chat_id: str):
                     # Telegram 消息有 4096 字符限制
                     if len(final_answer) > 3800:
                         final_answer = final_answer[:3800] + "...(内容已截断)"
-                    await send_telegram_reply(token, chat_id, f"✅ 任务完成！\n\n{final_answer}")
+                    await send_telegram_reply(token, chat_id, final_answer)
                 elif status == "FAILED":
                     await send_telegram_reply(token, chat_id, f"❌ 任务失败: {task_data.get('error')}")
     except Exception as e:
