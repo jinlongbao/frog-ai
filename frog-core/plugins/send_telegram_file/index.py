@@ -3,7 +3,7 @@ import os
 import sys
 import json
 
-def run(params: dict, context: dict) -> dict:
+def execute(params: dict, context: dict) -> dict:
     file_path = params.get("file_path", "").strip()
     caption = params.get("caption", "")
 

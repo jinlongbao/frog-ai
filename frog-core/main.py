@@ -250,7 +250,9 @@ async def send_telegram_reply(token: str, chat_id: str, text: str):
         async with httpx.AsyncClient(timeout=30.0) as client:
             await client.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": text})
     except Exception as e:
-        print(f"[Telegram Worker] Error sending reply: {e}")
+        import traceback
+        print(f"[Telegram Worker] Error sending reply: {str(e)}")
+        traceback.print_exc()
 
 async def send_typing_action(token: str, chat_id: str):
     """显示 Telegram '正在输入...' 状态（持续约 5 秒）"""
@@ -258,7 +260,7 @@ async def send_typing_action(token: str, chat_id: str):
         async with httpx.AsyncClient(timeout=30.0) as client:
             await client.post(f"https://api.telegram.org/bot{token}/sendChatAction", json={"chat_id": chat_id, "action": "typing"})
     except Exception as e:
-        print(f"[Telegram Worker] Error sending typing action: {e}")
+        print(f"[Telegram Worker] Error sending typing action: {str(e)}")
 
 class SearchQuery(BaseModel):
     query: str
@@ -1110,8 +1112,11 @@ async def execute_task_step(task_id: str):
             return task_dict
             
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"!!! CRITICAL TASK ERROR !!!\n{error_trace}")
         task.status = TaskStatus.FAILED
-        task.error = str(e)
+        task.error = f"{str(e)}\n\n{error_trace}"
         raise HTTPException(status_code=500, detail=f"Task step failed: {str(e)}")
 
 # Tool Writer APIs

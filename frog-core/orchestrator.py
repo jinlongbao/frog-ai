@@ -213,34 +213,42 @@ Action Input: {{ "action": "create", "tool_name": "usd_to_cny", "description": "
         # 1. Action Check (Highest Priority) - If AI wants to do something, we MUST loop.
         if "Action:" in response:
             if "Thought:" in response:
-                thought = response.split("Thought:")[1].split("Action:")[0].strip()
+                thought_parts = response.split("Thought:")
+                if len(thought_parts) > 1:
+                    thought = thought_parts[1].split("Action:")[0].strip()
             
-            action_part = response.split("Action:")[1].split("Action Input:")[0].strip()
-            action = action_part
+            action_parts = response.split("Action:")
+            if len(action_parts) > 1:
+                action_content = action_parts[1].split("Action Input:")[0].strip()
+                action = action_content
             
             if "Action Input:" in response:
-                input_str = response.split("Action Input:")[1].strip()
-                # Remove possible Final Answer suffix if AI added it erroneously
-                if "Final Answer:" in input_str:
-                    input_str = input_str.split("Final Answer:")[0].strip()
-                
-                # Remove markdown fences
-                if input_str.startswith("```"):
-                    input_str = input_str.split("```")[1]
-                    if input_str.startswith("json"):
-                        input_str = input_str[4:]
-                    input_str = input_str.split("```")[0].strip()
-                
-                try:
-                    action_input = json.loads(input_str)
-                except Exception:
-                    # Try to extract JSON with regex if raw split fails
-                    import re
-                    match = re.search(r"\{.*\}", input_str, re.DOTALL)
-                    if match:
-                        try:
-                            action_input = json.loads(match.group())
-                        except: pass
+                input_parts = response.split("Action Input:")
+                if len(input_parts) > 1:
+                    input_str = input_parts[1].strip()
+                    # Remove possible Final Answer suffix if AI added it erroneously
+                    if "Final Answer:" in input_str:
+                        input_str = input_str.split("Final Answer:")[0].strip()
+                    
+                    # Remove markdown fences
+                    if input_str.startswith("```"):
+                        lines = input_str.splitlines()
+                        if len(lines) > 1 and lines[0].startswith("```"):
+                            # Skip the first line (fence) and last line (fence)
+                            input_str = "\n".join(lines[1:])
+                            if "```" in input_str:
+                                input_str = input_str.split("```")[0].strip()
+                    
+                    try:
+                        action_input = json.loads(input_str)
+                    except Exception:
+                        # Try to extract JSON with regex if raw split fails
+                        import re
+                        match = re.search(r"\{.*\}", input_str, re.DOTALL)
+                        if match:
+                            try:
+                                action_input = json.loads(match.group())
+                            except: pass
 
             return {
                 "type": "action",
