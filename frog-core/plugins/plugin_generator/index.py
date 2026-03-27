@@ -17,6 +17,7 @@ def execute(params: dict, context: dict) -> dict:
     action = params.get("action")
     tool_name = params.get("tool_name")
     code = params.get("code")
+    test_code = params.get("test_code")
     
     if not action or not tool_name or not code:
         return {"status": "error", "message": "Missing required parameters: action, tool_name, and code"}
@@ -33,10 +34,22 @@ def execute(params: dict, context: dict) -> dict:
                 tool_name=tool_name,
                 description=description,
                 code=code,
-                parameters=tool_params
+                parameters=tool_params,
+                test_code=test_code
             )
+            
+            # Phase 33: TDD Auto-Verification
+            verification = tool_writer.verify_tool(tool_name)
+            if verification.get("status") != "success":
+                return {
+                    "status": "error",
+                    "installed": True, # Still installed but failed tests
+                    "message": f"Tool created but failed verification: {verification.get('message')}",
+                    "test_output": verification.get("output")
+                }
+
             result["installed"] = True
-            result["message"] = f"Successfully created and installed plugin: {tool_name}"
+            result["message"] = f"Successfully created, installed, and verified plugin: {tool_name}"
             return result
             
         elif action == "fix":

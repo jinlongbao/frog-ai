@@ -21,7 +21,45 @@ import asyncio
 import logging
 
 from orchestrator import orchestrator, TaskStatus
-from tool_writer import tool_writer
+from tool_writer import ToolWriter
+from memory_manager import init_memory_manager
+from mcp_discovery import MCPDiscovery
+from mcp_manager import MCPManager
+from docker_manager import DockerManager
+from shadow_manager import ShadowManager
+from guardian_expert import audit_tool_call
+
+# Initialize Memory Manager and inject into Orchestrator
+memory_manager = init_memory_manager()
+orchestrator.set_memory_manager(memory_manager)
+
+# Initialize Docker Manager and inject into Orchestrator
+docker_manager = DockerManager()
+orchestrator.docker_manager = docker_manager
+
+# Knowledge storage
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge")
+WEB_KNOWLEDGE_DIR = os.path.join(BASE_DIR, "web_knowledge")
+EXPERT_KNOWLEDGE_DIR = os.path.join(BASE_DIR, "expert_knowledge")
+PLUGINS_DIR = os.path.join(BASE_DIR, "plugins")
+GENERATED_TOOLS_DIR = os.path.join(BASE_DIR, "generated_tools")
+
+for d in [KNOWLEDGE_DIR, WEB_KNOWLEDGE_DIR, EXPERT_KNOWLEDGE_DIR, PLUGINS_DIR, GENERATED_TOOLS_DIR]:
+    if not os.path.exists(d):
+        os.makedirs(d)
+
+# Initialize Shadow Manager for safety
+WORKSPACE_PATH = os.path.dirname(BASE_DIR) # Frog root
+shadow_manager = ShadowManager(WORKSPACE_PATH)
+
+# Initialize MCP components
+mcp_manager = MCPManager()
+mcp_discovery = MCPDiscovery(memory_manager)
+mcp_discovery.seed_initial_market()
+
+# Update tool_writer with docker capabilities
+tool_writer = ToolWriter(docker_manager=docker_manager)
 
 app = FastAPI(title="Frog AI Brain")
 
@@ -102,25 +140,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Knowledge storage
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge")
-WEB_KNOWLEDGE_DIR = os.path.join(BASE_DIR, "web_knowledge")
-EXPERT_KNOWLEDGE_DIR = os.path.join(BASE_DIR, "expert_knowledge")
-PLUGINS_DIR = os.path.join(BASE_DIR, "plugins")
-GENERATED_TOOLS_DIR = os.path.join(BASE_DIR, "generated_tools")
-
-if not os.path.exists(KNOWLEDGE_DIR):
-    os.makedirs(KNOWLEDGE_DIR)
-if not os.path.exists(WEB_KNOWLEDGE_DIR):
-    os.makedirs(WEB_KNOWLEDGE_DIR)
-if not os.path.exists(EXPERT_KNOWLEDGE_DIR):
-    os.makedirs(EXPERT_KNOWLEDGE_DIR)
-if not os.path.exists(PLUGINS_DIR):
-    os.makedirs(PLUGINS_DIR)
-if not os.path.exists(GENERATED_TOOLS_DIR):
-    os.makedirs(GENERATED_TOOLS_DIR)
 
 BOT_CONFIG_FILE = os.path.join(KNOWLEDGE_DIR, "bot_config.json")
 LLM_CONFIG_FILE = os.path.join(KNOWLEDGE_DIR, "llm_config.json")
@@ -326,6 +345,9 @@ class ExpertKnowledge(BaseModel):
 class KnowledgeRetrieveRequest(BaseModel):
     query: str
     top_k: int = 3
+
+class SettingsInitRequest(BaseModel):
+    role_name: str
 
 @app.get("/")
 async def root():
@@ -765,6 +787,36 @@ class DeleteKnowledgeRequest(BaseModel):
 class ResumeTaskRequest(BaseModel):
     user_input: str
 
+@app.get("/templates/list")
+async def list_templates():
+    """List available persona templates from the root templates directory."""
+    templates_dir = os.path.join(os.path.dirname(BASE_DIR), "templates")
+    if not os.path.exists(templates_dir):
+        return {"templates": []}
+    
+    templates = []
+    for filename in os.listdir(templates_dir):
+        if filename.endswith(".json"):
+            templates.append(filename.replace(".json", ""))
+    return {"templates": templates}
+
+@app.post("/settings/init")
+async def initialize_settings(req: SettingsInitRequest):
+    """Initialize system memory with a selected persona template."""
+    templates_dir = os.path.join(os.path.dirname(BASE_DIR), "templates")
+    template_path = os.path.join(templates_dir, f"{req.role_name}.json")
+    
+    if not os.path.exists(template_path):
+        raise HTTPException(status_code=404, detail=f"Template {req.role_name} not found")
+    
+    # Copy to project_memory.json
+    dest_path = os.path.join(KNOWLEDGE_DIR, "project_memory.json")
+    try:
+        shutil.copy(template_path, dest_path)
+        return {"status": "success", "message": f"Initialized with {req.role_name}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Initialization failed: {str(e)}")
+
 @app.post("/knowledge/delete")
 async def delete_knowledge(request: DeleteKnowledgeRequest):
     try:
@@ -988,6 +1040,25 @@ async def execute_task_step(task_id: str):
                     if not isinstance(tool_params, dict):
                         tool_params = {}
 
+                    # Phase 32: Guardian Mode Audit
+                    is_safe, warning = audit_tool_call(tool_name, tool_params)
+                    if not is_safe:
+                        task.status = TaskStatus.WAITING_FOR_HUMAN
+                        task.human_input_pending = f"⚠️ [Frog Guardian] Destructive action detected: {warning}\n\nDo you want to proceed with {tool_name}?"
+                        task.human_input_type = "confirm"
+                        task.updated_at = datetime.now().isoformat()
+                        
+                        # Add a step to reflect the pause
+                        task.steps.append({
+                            "step_number": len(task.steps) + 1,
+                            "timestamp": datetime.now().isoformat(),
+                            "result": f"Paused for human confirmation: {warning}"
+                        })
+                        return task.to_dict()
+
+                    # Phase 32: Shadow Snapshot before execution
+                    shadow_manager.take_snapshot(f"Pre-tool: {tool_name}")
+
                     if tool_name == "search_browser":
                         search_query = tool_params.get("command", "") or tool_params.get("query", "")
                         if search_query:
@@ -1070,6 +1141,42 @@ async def execute_task_step(task_id: str):
                                 "content": "Unsupported action. Use save or retrieve."
                             }
 
+                    elif tool_name == "project_memory":
+                        from plugins.project_memory.index import execute as mem_exec
+                        result = mem_exec(tool_params, {
+                            "memory_manager": memory_manager,
+                            "knowledge_dir": KNOWLEDGE_DIR
+                        })
+                        observation = {
+                            "type": "observation",
+                            "tool": "project_memory",
+                            "content": result
+                        }
+
+                    elif tool_name == "mcp_registry":
+                        from plugins.mcp_registry.index import execute as mcp_exec
+                        result = mcp_exec(tool_params, {
+                            "mcp_discovery": mcp_discovery,
+                            "mcp_manager": mcp_manager,
+                            "docker_manager": orchestrator.docker_manager if hasattr(orchestrator, 'docker_manager') else None
+                        })
+                        observation = {
+                            "type": "observation",
+                            "tool": "mcp_registry",
+                            "content": result
+                        }
+
+                    elif tool_name == "shadow_rollback":
+                        from plugins.shadow_rollback.index import execute as roll_exec
+                        result = roll_exec(tool_params, {
+                            "shadow_manager": shadow_manager
+                        })
+                        observation = {
+                            "type": "observation",
+                            "tool": "shadow_rollback",
+                            "content": result
+                        }
+
                     elif tool_name == "list_tools":
                         result = tool_writer.list_tools()
                         observation = {
@@ -1126,6 +1233,14 @@ async def execute_task_step(task_id: str):
                             "traceback": error_trace
                         }
                     }
+            
+            # Phase 32: Visual Diffing after execution
+            if observation and observation.get("status") != "error":
+                try:
+                    diff = shadow_manager.get_diff()
+                    if any(diff.values()):
+                        observation["fs_diff"] = diff
+                except: pass
             
             if observation:
                 if task.steps:
@@ -1367,6 +1482,25 @@ async def update_llm_settings(config: dict = Body(...)):
     """持久化前端 LLM 配置，供 Telegram 远控使用"""
     save_llm_config(config)
     return {"status": "success", "message": "LLM configuration saved."}
+
+@app.get("/mcp/active")
+async def list_active_mcp():
+    """List all currently active MCP server connections."""
+    try:
+        active = mcp_manager.list_active_servers()
+        # In a real scenario, we might want to query their capabilities too
+        return {"status": "success", "servers": active}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/mcp/market")
+async def list_mcp_market():
+    """List available MCP servers from the discovery engine."""
+    try:
+        tools = mcp_discovery.list_market()
+        return {"status": "success", "tools": tools}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

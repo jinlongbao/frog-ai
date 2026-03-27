@@ -18,9 +18,8 @@ if not os.path.exists(GENERATED_TOOLS_DIR):
     os.makedirs(GENERATED_TOOLS_DIR)
 
 class ToolWriter:
-    def __init__(self):
-        # We don't need to keep an internal dict anymore, as we'll scan directories dynamically
-        pass
+    def __init__(self, docker_manager=None):
+        self.docker_manager = docker_manager
 
     def _get_tool_path(self, tool_name: str) -> str:
         return os.path.join(GENERATED_TOOLS_DIR, tool_name)
@@ -75,7 +74,7 @@ class ToolWriter:
             "tools": tools
         }
 
-    def write_tool(self, tool_name: str, description: str, code: str, parameters: Optional[Dict] = None) -> Dict[str, Any]:
+    def write_tool(self, tool_name: str, description: str, code: str, parameters: Optional[Dict] = None, test_code: Optional[str] = None) -> Dict[str, Any]:
         """
         Write a new tool using folder-based structure: generated_tools/{tool_name}/[index.py, manifest.json]
         """
@@ -111,6 +110,16 @@ class ToolWriter:
         with open(os.path.join(tool_path, "index.py"), "w", encoding="utf-8") as f:
             f.write(code)
             
+        # 3. Create tests/test_index.py (Phase 33: TDD)
+        test_dir = os.path.join(tool_path, "tests")
+        os.makedirs(test_dir, exist_ok=True)
+        with open(os.path.join(test_dir, "test_index.py"), "w", encoding="utf-8") as f:
+            if test_code:
+                f.write(test_code)
+            else:
+                # Fallback minimal template
+                f.write(f"import pytest\nimport index\n\ndef test_basic():\n    # Basic sanity check\n    assert hasattr(index, 'execute')\n")
+            
         return {
             "status": "success",
             "tool_id": safe_name,
@@ -120,7 +129,76 @@ class ToolWriter:
         }
 
     def execute_tool(self, tool_id: str, params: Dict, context: Optional[Dict] = None) -> Dict[str, Any]:
-        """Execute a tool from generated_tools/"""
+        """Execute a tool. Uses Docker sandbox if available, else falls back to subprocess."""
+        if self.docker_manager:
+            return self.execute_in_sandbox(tool_id, params, context)
+        return self.execute_isolated(tool_id, params, context)
+
+    def execute_in_sandbox(self, tool_id: str, params: Dict, context: Optional[Dict] = None) -> Dict[str, Any]:
+        """Runs the tool inside an isolated Docker container."""
+        # Check tool exists
+        tool_path = os.path.join(GENERATED_TOOLS_DIR, tool_id)
+        if not os.path.exists(tool_path):
+            tool_path = os.path.join(PLUGINS_DIR, tool_id)
+            if not os.path.exists(tool_path):
+                return {"status": "error", "message": f"Tool '{tool_id}' not found"}
+
+        try:
+            # Transfer tool files to temp dir for Docker mount
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Copy index.py and manifest.json
+                for item in ["index.py", "manifest.json"]:
+                    src = os.path.join(tool_path, item)
+                    if os.path.exists(src):
+                        shutil.copy(src, temp_dir)
+                
+                # Serialized params/context
+                with open(os.path.join(temp_dir, "params.json"), "w", encoding="utf-8") as f:
+                    json.dump(params, f)
+                with open(os.path.join(temp_dir, "context.json"), "w", encoding="utf-8") as f:
+                    json.dump(context or {}, f)
+                
+                # Run in container via DockerManager
+                result = self.docker_manager.run_tool_container(
+                    image="python:3.11-slim",
+                    command=["python", "index.py"], # This assumes index.py reads params.json
+                    volumes={temp_dir: {"bind": "/app", "mode": "rw"}}
+                )
+                return result
+        except Exception as e:
+             return {"status": "error", "message": f"Docker sandbox execution failed: {str(e)}"}
+
+    def verify_tool(self, tool_id: str) -> Dict[str, Any]:
+        """Runs pytest on the tool's test suite inside the sandbox."""
+        if not self.docker_manager:
+            return {"status": "error", "message": "Docker Manager not initialized. Cannot verify tool."}
+
+        tool_path = self._get_tool_path(tool_id)
+        if not os.path.exists(tool_path):
+             return {"status": "error", "message": f"Tool '{tool_id}' not found"}
+
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Copy everything to temp dir (including tests/)
+                import shutil
+                shutil.copytree(tool_path, os.path.join(temp_dir, "app"), dirs_exist_ok=True)
+                
+                # Run pytest in container
+                result = self.docker_manager.run_tool_container(
+                    image="python:3.11-slim",
+                    command=["sh", "-c", "pip install pytest && pytest /app/tests"],
+                    volumes={temp_dir: {"bind": "/app", "mode": "rw"}}
+                )
+                
+                if result.get("status") == "success":
+                    return {"status": "success", "message": "All tests passed.", "output": result.get("output")}
+                else:
+                    return {"status": "error", "message": "Tests failed.", "output": result.get("output")}
+        except Exception as e:
+            return {"status": "error", "message": f"Verification failed: {str(e)}"}
+
+    def execute_isolated(self, tool_id: str, params: Dict, context: Optional[Dict] = None) -> Dict[str, Any]:
+        """Legacy subprocess execution (fallback)"""
         # Check in generated_tools
         tool_path = os.path.join(GENERATED_TOOLS_DIR, tool_id)
         if not os.path.exists(tool_path):

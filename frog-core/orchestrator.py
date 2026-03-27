@@ -59,6 +59,10 @@ class Orchestrator:
     def __init__(self):
         self.tasks: Dict[str, Task] = {}
         self.max_steps = 10
+        self.memory_manager: Optional[Any] = None
+        
+    def set_memory_manager(self, memory_manager: Any):
+        self.memory_manager = memory_manager
         
     def create_task(self, messages: List[Dict], config: Dict) -> str:
         task_id = str(uuid.uuid4())

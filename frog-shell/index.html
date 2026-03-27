@@ -839,8 +839,30 @@
             </header>
             
             <div class="plugin-grid-container" style="padding: 0; background: transparent; border: none; backdrop-filter: none; overflow-y: auto;">
-                <div id="pluginList" class="knowledge-grid" style="padding: 2px;">
+                <h3 style="margin-bottom: 12px; font-size: 1rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+                    <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%;"></span>
+                    <span data-i18n="active_servers">Active Connections</span>
+                </h3>
+                <div id="mcpList" class="knowledge-grid" style="padding: 2px; margin-bottom: 32px;">
+                    <!-- Active MCP servers will be loaded here -->
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                    <span class="view-icon">📦</span>
+                    <h3 data-i18n="nav_plugins" style="margin: 0;">Plugin Gallery</h3>
+                </div>
+                <div id="pluginList" class="knowledge-grid" style="padding: 2px; margin-bottom: 48px;">
                     <!-- Dynamic Tool Cards -->
+                </div>
+
+                <div style="margin-top: 32px; border-top: 1px solid var(--border); padding-top: 32px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+                        <span class="view-icon">🛒</span>
+                        <h3 data-i18n="mcp_market" style="margin: 0;">MCP Market</h3>
+                    </div>
+                    <div id="mcpMarketList" class="knowledge-grid" style="padding: 2px;">
+                        <!-- Market items will be loaded here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -1083,7 +1105,12 @@
                 delete_success: "Tool deleted successfully!",
                 upload_success: "Plugin installed successfully!",
                 uploading: "Uploading...",
-                no_plugins: "No plugins found."
+                no_plugins: "No plugins found.",
+                mcp_servers: "MCP Servers",
+                active_servers: "Active Connections",
+                mcp_market: "MCP Market",
+                external_capabilities: "External Service",
+                no_mcp: "No active MCP servers connected."
             },
             zh: {
                 nav_command: "AI 指挥",
@@ -1164,7 +1191,12 @@
                 delete_success: "工具已成功删除！",
                 upload_success: "插件安装成功！",
                 uploading: "正在上传...",
-                no_plugins: "未发现任何插件。"
+                no_plugins: "未发现任何插件。",
+                mcp_servers: "MCP 服务",
+                active_servers: "当前活跃连接",
+                mcp_market: "MCP 市场 (探索)",
+                external_capabilities: "外部服务扩展",
+                no_mcp: "目前没有活跃的 MCP 服务连接。"
             }
         };
 
@@ -1353,7 +1385,12 @@
         loadLlmConfig();
         updateLanguage();
 
-        const API_BASE_URL = 'http://127.0.0.1:8000';
+        // Dynamic API Discovery (Supports localhost, Docker networking, and remote access)
+        const host = window.location.hostname;
+        const protocol = window.location.protocol;
+        const API_BASE_URL = (host === 'localhost' || host === '127.0.0.1') 
+            ? 'http://127.0.0.1:8000' 
+            : `${protocol}//${host}:8000`;
 
         async function checkHealth() {
             const t = translations[currentLang];
@@ -1972,6 +2009,58 @@
                 console.error(err);
                 if (typeof addLog === 'function') addLog('Load plugins failed: ' + err.message, 'error');
             }
+            
+            // Load MCP separately
+            loadMCPs().catch(err => console.error('Failed to load MCPs:', err));
+        }
+
+        async function loadMCPs() {
+            const t = translations[currentLang];
+            const mcpList = document.getElementById('mcpList');
+            const mcpMarketList = document.getElementById('mcpMarketList');
+            
+            // 1. Load Active MCPs
+            try {
+                const activeRes = await axios.get(`${API_BASE_URL}/mcp/active`);
+                const servers = activeRes.data.servers || [];
+                mcpList.innerHTML = '';
+                
+                if (servers.length === 0) {
+                    mcpList.innerHTML = `<div style="grid-column: 1/-1; padding: 20px; color: var(--text-secondary); font-style: italic;">${t.no_mcp}</div>`;
+                } else {
+                    servers.forEach(serverId => {
+                        const card = document.createElement('div');
+                        card.className = 'tool-card';
+                        card.style.borderLeft = '4px solid #22c55e';
+                        card.innerHTML = `
+                            <div class="tool-badge badge-builtin" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">CONNECTED</div>
+                            <h4 style="margin-top: 8px;">${serverId}</h4>
+                            <p>${t.external_capabilities}</p>
+                        `;
+                        mcpList.appendChild(card);
+                    });
+                }
+            } catch (e) { console.error('Load active MCP failed:', e); }
+
+            // 2. Load MCP Market
+            try {
+                const marketRes = await axios.get(`${API_BASE_URL}/mcp/market`);
+                const marketTools = marketRes.data.tools || [];
+                mcpMarketList.innerHTML = '';
+                
+                marketTools.forEach(tool => {
+                    const card = document.createElement('div');
+                    card.className = 'tool-card';
+                    card.style.opacity = '0.8';
+                    card.innerHTML = `
+                        <div class="tool-badge badge-generated" style="background: rgba(167, 139, 250, 0.1); color: #a78bfa;">MARKET</div>
+                        <h4>${tool.name}</h4>
+                        <p>${tool.description}</p>
+                        <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 8px;">Image: ${tool.image}</div>
+                    `;
+                    mcpMarketList.appendChild(card);
+                });
+            } catch (e) { console.error('Load MCP market failed:', e); }
         }
 
         async function deleteTool(id) {
@@ -2086,8 +2175,18 @@
         
         // ------------- System Initialization Wizard Logic -------------
         let selectedRole = null;
-        const fs = require('fs');
-        const path = require('path');
+        
+        // Environment Detection: Browser vs Electron
+        const isElectron = typeof require !== 'undefined';
+        let fs, path;
+        if (isElectron) {
+            try {
+                fs = require('fs');
+                path = require('path');
+            } catch (e) {
+                console.warn("Electron environment detected but node modules failed to load:", e);
+            }
+        }
         
         function checkFirstRun() {
             const config = localStorage.getItem('frog_llm_config');
@@ -2125,35 +2224,32 @@
             document.getElementById('role-' + role).classList.add('selected');
         }
         
-        function finishWizard() {
+        async function finishWizard() {
             if (!selectedRole) {
                 alert("Please select a Persona template to give your Agent its foundational skills.");
                 return;
             }
             
             try {
-                // Copy template directly into local project memory using Node's native file system
-                const templatePath = path.join(__dirname, '..', 'templates', `${selectedRole}.json`);
-                const destDir = path.join(__dirname, '..', 'frog-core', 'knowledge');
-                const destPath = path.join(destDir, 'project_memory.json');
+                addLog(`⚙️ Initializing [${selectedRole.toUpperCase()}] persona...`, 'system');
                 
-                if (!fs.existsSync(destDir)) {
-                    fs.mkdirSync(destDir, { recursive: true });
+                // Use the new Backend-Level Initialization API (Compatible with both Docker and Electron)
+                const res = await axios.post(`${API_BASE_URL}/settings/init`, {
+                    role_name: selectedRole
+                });
+                
+                if (res.data.status === 'success') {
+                    localStorage.setItem('frog_initialized', 'true');
+                    document.getElementById('initWizard').style.display = 'none';
+                    if (typeof loadLlmConfig === 'function') loadLlmConfig();
+                    addLog(`🚀 System initialized successfully!`, 'system');
+                } else {
+                    throw new Error(res.data.message || "Unknown error during initialization");
                 }
                 
-                const templateData = fs.readFileSync(templatePath, 'utf8');
-                fs.writeFileSync(destPath, templateData);
-                
-                localStorage.setItem('frog_initialized', 'true');
-                document.getElementById('initWizard').style.display = 'none';
-                
-                if (typeof loadLlmConfig === 'function') loadLlmConfig();
-                
-                addLog(`🚀 System initialized successfully! Injecting [${selectedRole.toUpperCase()}] persona into the Agent...`, 'system');
-                
             } catch (err) {
-                console.error("Failed to load template:", err);
-                alert("Failed to load the selected template. " + err.message);
+                console.error("Failed to initialize system:", err);
+                alert("Failed to initialize the system. " + (err.response?.data?.detail || err.message));
             }
         }
 

@@ -36,3 +36,7 @@ frog-core/generated_tools/
 .idea/
 *.swp
 *.swo
+
+# Project Debug/Status
+task_debug.json
+docker_status.txt

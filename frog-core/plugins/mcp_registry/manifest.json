@@ -1,0 +1,23 @@
+{
+    "name": "mcp_registry",
+    "description": "Search and install community MCP servers for specialized tasks (DB, Slack, etc.)",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["search", "install", "list"],
+                "description": "Action to perform."
+            },
+            "query": {
+                "type": "string",
+                "description": "Search query for tool discovery."
+            },
+            "tool_id": {
+                "type": "string",
+                "description": "ID of the tool to install."
+            }
+        },
+        "required": ["action"]
+    }
+}

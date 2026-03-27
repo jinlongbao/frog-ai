@@ -20,6 +20,10 @@
         "type": "string",
         "description": "A clear description of what the tool does. Required for 'create'."
       },
+      "test_code": {
+        "type": "string",
+        "description": "Optional: Pytest code to verify the tool's logic."
+      },
       "code": {
         "type": "string",
         "description": "The full Python code for 'index.py'. MUST contain a 'def execute(params: dict, context: dict) -> dict:' function. Code MUST be cross-platform (use os.path, platform.system()). Required for 'create' and 'fix'."

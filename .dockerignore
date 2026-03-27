@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.env
+.git/
+.github/
+.vscode/
+node_modules/
+dist/
+build/
+*.log
+task_debug.json
+.DS_Store

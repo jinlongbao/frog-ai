@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  frog-brain:
+    build: .
+    container_name: frog-brain
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - LLM_PROVIDER=${LLM_PROVIDER}
+      - DEFAULT_MODEL=${DEFAULT_MODEL}
+      - CHROMA_HOST=frog-memory
+      - CHROMA_PORT=8000
+    volumes:
+      - ./frog-core:/app/frog-core
+      - ./templates:/app/templates
+      - /var/run/docker.sock:/var/run/docker.sock # For DIND / Sibling containers
+    depends_on:
+      - frog-memory
+    networks:
+      - frog-network
+
+  frog-memory:
+    image: chromadb/chroma:0.4.24
+    container_name: frog-memory
+    ports:
+      - "8001:8000"
+    volumes:
+      - frog-memory-data:/chroma/chroma
+    networks:
+      - frog-network
+
+  # ==========================================
+  # Frog UI: IDEA-Style Web Front-end
+  # ==========================================
+  frog-ui:
+    build:
+      context: ./frog-shell
+      dockerfile: Dockerfile
+    container_name: frog-ui
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frog-shell:/usr/share/nginx/html
+    restart: always
+    depends_on:
+      - frog-brain
+
+networks:
+  frog-network:
+    driver: bridge
+
+volumes:
+  frog-memory-data:
+  frog-pip-cache:

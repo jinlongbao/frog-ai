@@ -1,83 +1,83 @@
-# Frog AI - Official Wiki
+# Frog AI - Technical Wiki (v3.0)
 
-Welcome to the Frog AI official documentation! Frog AI is a deeply autonomous, cross-platform personal AI agent. It acts as a **desktop-native expert** that doesn't just answer questions, but actively **plans, executes, remembers, and self-evolves**.
-
----
-
-## 📖 Table of Contents
-1. [Architecture Overview](#1-architecture-overview)
-2. [Plugin System (`tool_writer`)](#2-plugin-system)
-3. [Built-in Capabilities](#3-built-in-capabilities)
-4. [Remote Control & Integration](#4-remote-control--integration)
+Welcome to the official technical documentation for Frog AI v3.0. This guide provides deep dives into the system architecture, plugin development, and external service integration via the Model Context Protocol (MCP).
 
 ---
 
-## 1. Architecture Overview
-Frog AI relies on a high-speed decoupled architecture consisting of a Python FastAPI backend (`frog-core`) and an Electron frontend (`frog-shell`).
+## 1. System Architecture
 
-### Pipeless Subprocess Sandbox
-To execute dynamic AI-generated code without corrupting the host machine or freezing the UI, Frog AI uses a sandboxed subprocess engine. 
-- Python plugins execute in absolute isolation.
-- `stdout.txt` acts as an asynchronous disk-drop messaging queue.
-- Hard 30-second thermal timeouts prevent ghost-process deadlocks.
+Frog AI v3.0 is built on a **Modular Micro-Services** architecture, orchestrated via Docker.
+
+### Core Components
+- **`frog-brain` (Python/FastAPI)**: The cognitive engine. Handles task planning (ReAct), tool execution, and LLM orchestration.
+- **`frog-memory` (ChromaDB)**: The vectorized long-term memory store. Manages project context, expert knowledge, and MCP discovery markets.
+- **`frog-ui` (Nginx/Web)**: The "IDE-Style" frontend. Served as a static web app, it connect to the Brain via REST/SSE.
+
+### The Sandbox Engine
+Frog executes AI-generated code in a dedicated **Containerized Sandbox**.
+- Tools are written as standalone modules with a `manifest.json` and `index.py`.
+- Execution occurs in an isolated Python container to prevent host machine corruption.
+- State is synchronized via shared volumes and specialized "Shift" logs.
 
 ---
 
-## 2. Plugin System
-Frog AI natively supports hot-swapping functionality. If the AI detects it lacks a tool, it can self-author one into the `generated_tools/` directory.
+## 2. Model Context Protocol (MCP)
 
-### Anatomy of a Plugin
-A standard plugin requires exactly two files:
-* `manifest.json`: Tells the LLM what the tool is and its parameters.
-* `index.py`: The isolated logic.
+Frog AI v3.0 is an **MCP-Native** agent. It treats external services as first-class citizens.
 
-**Manifest Specification (JSON Schema):**
+### MCP Discovery Market
+The discovery engine (`mcp_discovery.py`) maintains a vectorized registry of community MCP servers. The AI can:
+1. **Search** for tools based on task intent (e.g., "I need to read a SQLite database").
+2. **Retrieve** connection metadata (Docker images, capabilities).
+3. **Instantiate** a connection on-the-fly via the `mcp_registry` tool.
+
+### Active Connections
+Once connected, the AI maintains a persistent JSON-RPC link to the MCP server, allowing it to call external tools as if they were built-in.
+
+---
+
+## 3. Plugin Development (`tool_writer`)
+
+While MCP is for external services, **Skills** (local plugins) are for specific, targeted logic within the project.
+
+### Creating a Skill
+A skill folder (in `plugins/` or `generated_tools/`) must contain:
+1. `manifest.json`: Metadata and parameter schema.
+2. `index.py`: The `execute()` function.
+
+**Manifest Example:**
 ```json
 {
-  "id": "my_tool",
-  "name": "My Custom Tool",
-  "description": "Does something amazing.",
-  "version": "1.0.0",
-  "entry": "index.py",
+  "id": "project_analyzer",
+  "name": "Project Analyzer",
+  "description": "Analyzes file structure and provides dependencies.",
   "parameters": {
     "type": "object",
     "properties": {
-      "target": { "type": "string", "description": "The processing target." }
+      "path": { "type": "string", "description": "Absolute path to analyze." }
     },
-    "required": ["target"]
+    "required": ["path"]
   }
 }
 ```
 
-**Index.py Specification:**
+**Implementation Example:**
 ```python
 def execute(params: dict, context: dict) -> dict:
-    target = params.get("target")
-    return {"status": "success", "result": f"Target locked: {target}"}
+    path = params.get("path")
+    # Logic here...
+    return {"status": "success", "result": f"Analysis of {path} completed."}
 ```
 
 ---
 
-## 3. Built-in Capabilities
+## 4. Operational Best Practices
 
-Frog AI ships with a suite of "expert" level core macros:
-- **`fs_expert`**: Safely searches directories, reads files, and moves outputs across OS boundaries.
-- **`shell_executor`**: Safely runs bash/powershell commands asynchronously on the host machine.
-- **`document_generator`**: Bypasses string building to output rich `.docx` and `.pptx` presentations directly to the desktop.
-- **`gui_expert`**: Automates keystrokes, mouse clicks, and bypasses regional clipboard barriers.
-- **`eyes_expert`**: Captures screen states natively, turning the local computer into a multi-modal desktop canvas for the AI.
+### Guardian Mode
+Always keep the **Guardian Mode** active. This layer audits every shell command and tool execution against a safety policy before it hits the sandbox.
 
----
-
-## 4. Remote Control & Integration
-
-### Telegram Integration
-Frog AI natively connects to the Telegram Bot API structure to serve as your mobile command station.
-* Any text message sent to your authorized Bot triggers a background `ReAct` chain locally on your PC.
-* **`send_telegram_file`**: If you ask Frog to fetch a desktop file, it locates it natively via `fs_expert` and blasts it back to your phone over the Telegram Bot API.
-
-### WeChat / Messaging Integration
-Using standard webhook APIs and the generic `messenger_bot` architecture, Frog can be integrated into enterprise notification chains.
+### Project Memory Integration
+Use the `project_memory` tool to "Teach" the AI about your specific workspace. This persists information across Docker restarts in the ChromaDB volume.
 
 ---
-*End of Wiki. For deployment instructions, refer to `README.md`.*
+*End of Technical Wiki (En). For deployment, see [README.md](../README.md).*

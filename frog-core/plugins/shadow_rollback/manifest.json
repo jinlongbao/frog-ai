@@ -1,0 +1,15 @@
+{
+    "name": "shadow_rollback",
+    "description": "View or revert recent filesystem changes made by tools.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["view_diff", "rollback"],
+                "description": "Action to perform."
+            }
+        },
+        "required": ["action"]
+    }
+}

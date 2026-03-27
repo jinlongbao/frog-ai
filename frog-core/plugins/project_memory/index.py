@@ -1,73 +1,58 @@
 import os
 import json
-import threading
 from datetime import datetime
+from typing import Dict, Any
 
-# Shared lock for thread safety since FastAPI runs in a thread pool
-_memory_lock = threading.Lock()
-
-def get_memory_file(context: dict) -> str:
-    # Use the knowledge directory provided by context or fallback to a default
-    base_dir = context.get("knowledge_dir", os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_dir, "project_memory.json")
-
-def _load_memory(filepath: str) -> dict:
-    if not os.path.exists(filepath):
-        return {}
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-def _save_memory_file(filepath: str, data: dict):
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-def execute(params: dict, context: dict) -> dict:
+def execute(params: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Manage persistent project memory.
-    params: { action: "save|get|list|clear", key: "...", value: "..." }
+    Manage persistent project memory using ChromaDB.
+    params: { action: "save|get|list|search|clear", key: "...", value: "...", query: "..." }
     """
     action = params.get("action")
     key = params.get("key")
     value = params.get("value")
+    query = params.get("query")
     
-    memory_file = get_memory_file(context)
+    memory_manager = context.get("memory_manager")
+    if not memory_manager:
+        return {"status": "error", "message": "MemoryManager not found in context."}
     
-    if action not in ["save", "get", "list", "clear"]:
-        return {"status": "error", "message": f"Unknown action: {action}"}
+    collection = "project_memory"
+    
+    if action == "save":
+        if not key or not value:
+            return {"status": "error", "message": "'key' and 'value' are required for save."}
         
-    with _memory_lock:
-        memory = _load_memory(memory_file)
+        memory_manager.add_memory(
+            collection_name=collection,
+            content=value,
+            metadata={"key": key, "timestamp": datetime.now().isoformat()},
+            doc_id=key
+        )
+        return {"status": "success", "message": f"Memory saved under key '{key}'"}
         
-        if action == "save":
-            if not key or not value:
-                return {"status": "error", "message": "'key' and 'value' are required for save."}
-            memory[key] = {
-                "content": value,
-                "timestamp": datetime.now().isoformat()
-            }
-            _save_memory_file(memory_file, memory)
-            return {"status": "success", "message": f"Memory saved under key '{key}'"}
-            
-        elif action == "get":
-            if not key:
-                return {"status": "error", "message": "'key' is required for get."}
-            if key not in memory:
-                return {"status": "error", "message": f"Key '{key}' not found in memory."}
-            return {"status": "success", "data": memory[key]}
-            
-        elif action == "list":
-            keys = list(memory.keys())
-            summary = {k: v["timestamp"] for k, v in memory.items()}
-            return {"status": "success", "keys": keys, "summary": summary}
-            
-        elif action == "clear":
-            if not key:
-                return {"status": "error", "message": "'key' is required for clear."}
-            if key in memory:
-                del memory[key]
-                _save_memory_file(memory_file, memory)
-                return {"status": "success", "message": f"Memory '{key}' cleared."}
-            return {"status": "success", "message": f"Key '{key}' not found, nothing to clear."}
+    elif action == "get":
+        if not key:
+            return {"status": "error", "message": "'key' is required for get."}
+        
+        memo = memory_manager.get_memory_by_id(collection, key)
+        if not memo:
+            return {"status": "error", "message": f"Key '{key}' not found."}
+        return {"status": "success", "data": memo}
+        
+    elif action == "search":
+        if not query:
+            return {"status": "error", "message": "'query' is required for search."}
+        
+        results = memory_manager.search_memory(collection, query, n_results=params.get("n_results", 3))
+        return {"status": "success", "results": results}
+        
+    elif action == "clear":
+        if not key:
+            return {"status": "error", "message": "'key' is required for clear."}
+        
+        memory_manager.delete_memory(collection, key)
+        return {"status": "success", "message": f"Memory '{key}' cleared."}
+        
+    else:
+        return {"status": "error", "message": f"Unknown or unsupported action: {action}"}
